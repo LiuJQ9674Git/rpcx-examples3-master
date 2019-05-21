@@ -2,15 +2,21 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="adab97a3-4b6b-40fc-b6ea-674c956d5f75" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/examples/httprouter/sample1/simple.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/examples/httprouter/sample2/multaction.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/rpcxzk/customer/customer.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/examples/golang/example1/httpclient.go" beforeDir="false" afterPath="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/examples/golang/example1/httpclient.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/rpcx-examples3/bidirectional/client/xclient.go" beforeDir="false" afterPath="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/rpcx-examples3/bidirectional/xcode/xclient.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/rpcx-examples3/bidirectional/server.go" beforeDir="false" afterPath="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/rpcx-examples3/bidirectional/server.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/rpcxzk/provider/zps/test.go" beforeDir="false" afterPath="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/rpcxzk/provider/zps/prodiver.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/serviceprovider/serviceprovider.go" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/.gitignore" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part3/handlers.go" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part3/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part3/main.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part3/models.go" beforeDir="false" afterPath="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part4/part4/models.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part3/responses.go" beforeDir="false" afterPath="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part4/part4/responses.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part4/.gitignore" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part4/handlers.go" beforeDir="false" afterPath="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part4/part4/handlers.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part4/handlers_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part4/part4/handlers_test.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part4/logger.go" beforeDir="false" afterPath="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part4/part4/logger.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part4/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part4/main.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part4/models.go" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part4/responses.go" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part4/router.go" beforeDir="false" afterPath="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part4/part4/router.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part4/routes.go" beforeDir="false" afterPath="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part4/part4/routes.go" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -31,7 +37,8 @@
       </usages-collector>
       <usages-collector id="statistics.file.extensions.open">
         <counts>
-          <entry key="go" value="82" />
+          <entry key="gitignore" value="1" />
+          <entry key="go" value="94" />
           <entry key="java" value="1" />
           <entry key="js" value="1" />
           <entry key="key" value="1" />
@@ -41,20 +48,20 @@
       </usages-collector>
       <usages-collector id="statistics.file.types.open">
         <counts>
-          <entry key="Go" value="82" />
+          <entry key="Go" value="94" />
           <entry key="JavaScript" value="1" />
           <entry key="Markdown" value="3" />
-          <entry key="PLAIN_TEXT" value="3" />
+          <entry key="PLAIN_TEXT" value="4" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.extensions.edit">
         <counts>
-          <entry key="go" value="524" />
+          <entry key="go" value="557" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.types.edit">
         <counts>
-          <entry key="Go" value="524" />
+          <entry key="Go" value="557" />
         </counts>
       </usages-collector>
     </session>
@@ -62,112 +69,89 @@
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
       <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/src/github.com/rpcx-ecosystem/rpcxzk/customer/customer.go">
+        <entry file="file://$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part4/part4/handlers.go">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="203">
-              <caret line="23" column="37" selection-start-line="23" selection-start-column="16" selection-end-line="23" selection-end-column="37" />
+            <state relative-caret-position="343">
+              <caret line="83" selection-start-line="83" selection-end-line="83" />
               <folding>
-                <element signature="e#13#181#0" expanded="true" />
+                <element signature="e#14#119#0" expanded="true" />
               </folding>
             </state>
           </provider>
         </entry>
       </file>
       <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/../../ABC-J2EE-DEV/cfs-master/src/github.com/docker/libkv/store/zookeeper/zookeeper.go">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="-2753">
-              <caret line="97" column="34" selection-start-line="97" selection-start-column="20" selection-end-line="97" selection-end-column="34" />
-              <folding>
-                <element signature="e#19#149#0" expanded="true" />
-              </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/../rpcx-4.0-release/src/github.com/smallnest/rpcx/serverplugin/zookeeper.go">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="645">
-              <caret line="43" column="9" lean-forward="true" selection-start-line="43" selection-start-column="9" selection-end-line="43" selection-end-column="9" />
-              <folding>
-                <element signature="e#23#286#0" expanded="true" />
-              </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/../rpcx-4.0-release/src/github.com/smallnest/rpcx/server/gateway.go">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="196">
-              <caret line="59" column="36" lean-forward="true" selection-start-line="59" selection-start-column="36" selection-end-line="59" selection-end-column="36" />
-              <folding>
-                <element signature="e#101#356#0" expanded="true" />
-              </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/src/github.com/rpcx-ecosystem/examples/httprouter/sample1/simple.go">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="345">
-              <caret line="23" lean-forward="true" selection-start-line="23" selection-end-line="23" />
-              <folding>
-                <element signature="e#16#88#0" expanded="true" />
-              </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file pinned="false" current-in-tab="false">
-        <entry file="file:///usr/local/Cellar/go/1.12.3/libexec/src/net/http/server.go">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="45195">
-              <caret line="3037" column="1" lean-forward="true" selection-start-line="3037" selection-start-column="1" selection-end-line="3037" selection-end-column="1" />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/../../ABC-J2EE-DEV/cfs-master/src/github.com/julienschmidt/httprouter/router.go">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="-767">
-              <caret line="96" column="19" lean-forward="true" selection-start-line="96" selection-start-column="19" selection-end-line="96" selection-end-column="19" />
-            </state>
-          </provider>
+        <entry file="file://$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part4/part4/models.go">
+          <provider selected="true" editor-type-id="text-editor" />
         </entry>
       </file>
       <file pinned="false" current-in-tab="true">
-        <entry file="file://$PROJECT_DIR$/src/github.com/rpcx-ecosystem/examples/httprouter/sample2/multaction.go">
+        <entry file="file://$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part4/main.go">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="189">
-              <caret line="81" column="7" selection-start-line="81" selection-start-column="7" selection-end-line="81" selection-end-column="7" />
+            <state relative-caret-position="180">
+              <caret line="12" selection-start-line="12" selection-end-line="12" />
               <folding>
-                <element signature="e#13#106#0" expanded="true" />
+                <element signature="e#14#43#0" expanded="true" />
               </folding>
             </state>
           </provider>
         </entry>
       </file>
       <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/src/github.com/rpcx-ecosystem/rpcxzk/provider/zps/prodiver.go">
+        <entry file="file://$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part3/main.go">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="276">
-              <caret line="41" column="16" selection-start-line="41" selection-start-column="14" selection-end-line="41" selection-end-column="19" />
+            <state relative-caret-position="208">
+              <caret line="24" column="41" selection-start-line="24" selection-start-column="41" selection-end-line="24" selection-end-column="41" />
               <folding>
-                <element signature="e#13#210#0" expanded="true" />
+                <element signature="e#14#149#0" expanded="true" />
               </folding>
             </state>
           </provider>
         </entry>
       </file>
       <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/../rpcx-4.0-release/src/github.com/smallnest/rpcx/server/server.go">
+        <entry file="file://$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part3/part3/handlers.go">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="249">
-              <caret line="203" column="16" lean-forward="true" selection-start-line="203" selection-start-column="11" selection-end-line="203" selection-end-column="23" />
+            <state relative-caret-position="-202">
+              <caret line="2" column="7" selection-start-line="2" selection-start-column="7" selection-end-line="2" selection-end-column="7" />
+              <folding>
+                <element signature="e#14#100#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part3/part3/responses.go">
+          <provider selected="true" editor-type-id="text-editor" />
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part4/part4/router.go">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="105">
+              <caret line="7" column="30" selection-start-line="7" selection-start-column="30" selection-end-line="7" selection-end-column="30" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part4/part4/routes.go">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="223">
+              <caret line="19" column="21" selection-start-line="19" selection-start-column="21" selection-end-line="19" selection-end-column="21" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part4/part4/handlers_test.go">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="-302">
+              <caret line="47" column="123" selection-start-line="47" selection-start-column="123" selection-end-line="47" selection-end-column="123" />
+              <folding>
+                <element signature="e#14#108#0" expanded="true" />
+              </folding>
             </state>
           </provider>
         </entry>
@@ -222,6 +206,13 @@
         <option value="$PROJECT_DIR$/../rpcx-4.0-release/src/github.com/smallnest/rpcx/server/gateway.go" />
         <option value="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/examples/httprouter/sample1/simple.go" />
         <option value="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/examples/httprouter/sample2/multaction.go" />
+        <option value="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part4/handlers_test.go" />
+        <option value="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part4/logger.go" />
+        <option value="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part3/part3/handlers.go" />
+        <option value="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part3/part3/responses.go" />
+        <option value="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part3/main.go" />
+        <option value="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part4/part4/handlers_test.go" />
+        <option value="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part4/main.go" />
       </list>
     </option>
   </component>
@@ -273,7 +264,7 @@
               <item name="src" type="462c0819:PsiDirectoryNode" />
               <item name="github.com" type="462c0819:PsiDirectoryNode" />
               <item name="rpcx-ecosystem" type="462c0819:PsiDirectoryNode" />
-              <item name="examples" type="462c0819:PsiDirectoryNode" />
+              <item name="httprouter-tutorial" type="462c0819:PsiDirectoryNode" />
             </path>
             <path>
               <item name="rpcx-examples3-master" type="b2602c69:ProjectViewProjectNode" />
@@ -281,8 +272,8 @@
               <item name="src" type="462c0819:PsiDirectoryNode" />
               <item name="github.com" type="462c0819:PsiDirectoryNode" />
               <item name="rpcx-ecosystem" type="462c0819:PsiDirectoryNode" />
-              <item name="examples" type="462c0819:PsiDirectoryNode" />
-              <item name="httprouter" type="462c0819:PsiDirectoryNode" />
+              <item name="httprouter-tutorial" type="462c0819:PsiDirectoryNode" />
+              <item name="part2" type="462c0819:PsiDirectoryNode" />
             </path>
             <path>
               <item name="rpcx-examples3-master" type="b2602c69:ProjectViewProjectNode" />
@@ -290,9 +281,8 @@
               <item name="src" type="462c0819:PsiDirectoryNode" />
               <item name="github.com" type="462c0819:PsiDirectoryNode" />
               <item name="rpcx-ecosystem" type="462c0819:PsiDirectoryNode" />
-              <item name="examples" type="462c0819:PsiDirectoryNode" />
-              <item name="httprouter" type="462c0819:PsiDirectoryNode" />
-              <item name="sample1" type="462c0819:PsiDirectoryNode" />
+              <item name="httprouter-tutorial" type="462c0819:PsiDirectoryNode" />
+              <item name="part3" type="462c0819:PsiDirectoryNode" />
             </path>
             <path>
               <item name="rpcx-examples3-master" type="b2602c69:ProjectViewProjectNode" />
@@ -300,9 +290,9 @@
               <item name="src" type="462c0819:PsiDirectoryNode" />
               <item name="github.com" type="462c0819:PsiDirectoryNode" />
               <item name="rpcx-ecosystem" type="462c0819:PsiDirectoryNode" />
-              <item name="examples" type="462c0819:PsiDirectoryNode" />
-              <item name="httprouter" type="462c0819:PsiDirectoryNode" />
-              <item name="sample2" type="462c0819:PsiDirectoryNode" />
+              <item name="httprouter-tutorial" type="462c0819:PsiDirectoryNode" />
+              <item name="part3" type="462c0819:PsiDirectoryNode" />
+              <item name="part3" type="462c0819:PsiDirectoryNode" />
             </path>
             <path>
               <item name="rpcx-examples3-master" type="b2602c69:ProjectViewProjectNode" />
@@ -310,7 +300,8 @@
               <item name="src" type="462c0819:PsiDirectoryNode" />
               <item name="github.com" type="462c0819:PsiDirectoryNode" />
               <item name="rpcx-ecosystem" type="462c0819:PsiDirectoryNode" />
-              <item name="rpcxzk" type="462c0819:PsiDirectoryNode" />
+              <item name="httprouter-tutorial" type="462c0819:PsiDirectoryNode" />
+              <item name="part4" type="462c0819:PsiDirectoryNode" />
             </path>
             <path>
               <item name="rpcx-examples3-master" type="b2602c69:ProjectViewProjectNode" />
@@ -318,36 +309,9 @@
               <item name="src" type="462c0819:PsiDirectoryNode" />
               <item name="github.com" type="462c0819:PsiDirectoryNode" />
               <item name="rpcx-ecosystem" type="462c0819:PsiDirectoryNode" />
-              <item name="rpcxzk" type="462c0819:PsiDirectoryNode" />
-              <item name="customer" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="rpcx-examples3-master" type="b2602c69:ProjectViewProjectNode" />
-              <item name="rpcx-examples3-master" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="github.com" type="462c0819:PsiDirectoryNode" />
-              <item name="rpcx-ecosystem" type="462c0819:PsiDirectoryNode" />
-              <item name="rpcxzk" type="462c0819:PsiDirectoryNode" />
-              <item name="defines" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="rpcx-examples3-master" type="b2602c69:ProjectViewProjectNode" />
-              <item name="rpcx-examples3-master" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="github.com" type="462c0819:PsiDirectoryNode" />
-              <item name="rpcx-ecosystem" type="462c0819:PsiDirectoryNode" />
-              <item name="rpcxzk" type="462c0819:PsiDirectoryNode" />
-              <item name="provider" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="rpcx-examples3-master" type="b2602c69:ProjectViewProjectNode" />
-              <item name="rpcx-examples3-master" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="github.com" type="462c0819:PsiDirectoryNode" />
-              <item name="rpcx-ecosystem" type="462c0819:PsiDirectoryNode" />
-              <item name="rpcxzk" type="462c0819:PsiDirectoryNode" />
-              <item name="provider" type="462c0819:PsiDirectoryNode" />
-              <item name="zps" type="462c0819:PsiDirectoryNode" />
+              <item name="httprouter-tutorial" type="462c0819:PsiDirectoryNode" />
+              <item name="part4" type="462c0819:PsiDirectoryNode" />
+              <item name="part4" type="462c0819:PsiDirectoryNode" />
             </path>
             <path>
               <item name="rpcx-examples3-master" type="b2602c69:ProjectViewProjectNode" />
@@ -434,6 +398,9 @@
   </component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part4/part4" />
+      <recent name="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part4" />
+      <recent name="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part3/part3" />
       <recent name="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/examples/httprouter/sample1" />
       <recent name="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/rpcx-examples3/bidirectional/xcode" />
     </key>
@@ -450,69 +417,84 @@
       </list>
     </option>
   </component>
-  <component name="RunManager" selected="Go Build.go build multaction.go">
-    <configuration name="go build customer.go" type="GoApplicationRunConfiguration" factoryName="Go Application" temporary="true" nameIsGenerated="true">
+  <component name="RunManager" selected="Go Build.go build main.go">
+    <configuration name="go build main.go (1)" type="GoApplicationRunConfiguration" factoryName="Go Application" temporary="true" nameIsGenerated="true">
       <module name="rpcx-examples3-master" />
       <working_directory value="$PROJECT_DIR$/" />
       <go_parameters value="-i" />
       <kind value="FILE" />
-      <filePath value="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/rpcxzk/customer/customer.go" />
+      <filePath value="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part3/main.go" />
       <directory value="$PROJECT_DIR$/" />
       <method v="2" />
     </configuration>
-    <configuration name="go build multaction.go" type="GoApplicationRunConfiguration" factoryName="Go Application" temporary="true" nameIsGenerated="true">
+    <configuration name="go build main.go" type="GoApplicationRunConfiguration" factoryName="Go Application" temporary="true" nameIsGenerated="true">
       <module name="rpcx-examples3-master" />
       <working_directory value="$PROJECT_DIR$/" />
       <go_parameters value="-i" />
       <kind value="FILE" />
-      <filePath value="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/examples/httprouter/sample2/multaction.go" />
+      <filePath value="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part4/main.go" />
       <directory value="$PROJECT_DIR$/" />
       <method v="2" />
     </configuration>
-    <configuration name="go build prodiver.go" type="GoApplicationRunConfiguration" factoryName="Go Application" temporary="true" nameIsGenerated="true">
+    <configuration name="TestBookShow in github.com/rpcx-ecosystem/httprouter-tutorial/part4/part4" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
       <module name="rpcx-examples3-master" />
-      <working_directory value="$PROJECT_DIR$/" />
+      <working_directory value="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part4/part4" />
       <go_parameters value="-i" />
-      <kind value="FILE" />
-      <filePath value="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/rpcxzk/provider/zps/prodiver.go" />
+      <framework value="gotest" />
+      <kind value="PACKAGE" />
+      <package value="github.com/rpcx-ecosystem/httprouter-tutorial/part4/part4" />
       <directory value="$PROJECT_DIR$/" />
+      <filePath value="$PROJECT_DIR$/" />
+      <pattern value="^TestBookShow$" />
       <method v="2" />
     </configuration>
-    <configuration name="go build simple.go" type="GoApplicationRunConfiguration" factoryName="Go Application" temporary="true" nameIsGenerated="true">
+    <configuration name="handlers_test.go (1)" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
       <module name="rpcx-examples3-master" />
-      <working_directory value="$PROJECT_DIR$/" />
+      <working_directory value="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part4/part4" />
       <go_parameters value="-i" />
+      <framework value="gotest" />
       <kind value="FILE" />
-      <filePath value="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/examples/httprouter/simple.go" />
       <directory value="$PROJECT_DIR$/" />
+      <filePath value="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part4/part4/handlers_test.go" />
       <method v="2" />
     </configuration>
-    <configuration name="Unnamed" type="XMakeRunConfiguration" factoryName="XMake" temporary="true">
-      <option name="runTarget" value="default" />
-      <option name="runArguments" value="" />
-      <envs />
+    <configuration name="handlers_test.go" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+      <module name="rpcx-examples3-master" />
+      <working_directory value="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part4" />
+      <go_parameters value="-i" />
+      <framework value="gotest" />
+      <kind value="FILE" />
+      <directory value="$PROJECT_DIR$/" />
+      <filePath value="$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part4/handlers_test.go" />
       <method v="2" />
     </configuration>
     <list>
-      <item itemvalue="XMake.Unnamed" />
-      <item itemvalue="Go Build.go build prodiver.go" />
-      <item itemvalue="Go Build.go build customer.go" />
-      <item itemvalue="Go Build.go build simple.go" />
-      <item itemvalue="Go Build.go build multaction.go" />
+      <item itemvalue="Go Build.go build main.go" />
+      <item itemvalue="Go Test.handlers_test.go" />
+      <item itemvalue="Go Build.go build main.go (1)" />
+      <item itemvalue="Go Test.TestBookShow in github.com/rpcx-ecosystem/httprouter-tutorial/part4/part4" />
+      <item itemvalue="Go Test.handlers_test.go (1)" />
     </list>
     <recent_temporary>
       <list>
-        <item itemvalue="Go Build.go build multaction.go" />
-        <item itemvalue="Go Build.go build simple.go" />
-        <item itemvalue="Go Build.go build customer.go" />
-        <item itemvalue="Go Build.go build prodiver.go" />
-        <item itemvalue="XMake.Unnamed" />
+        <item itemvalue="Go Build.go build main.go" />
+        <item itemvalue="Go Test.handlers_test.go (1)" />
+        <item itemvalue="Go Test.TestBookShow in github.com/rpcx-ecosystem/httprouter-tutorial/part4/part4" />
+        <item itemvalue="Go Build.go build main.go (1)" />
+        <item itemvalue="Go Test.handlers_test.go" />
       </list>
     </recent_temporary>
   </component>
+  <component name="TestHistory">
+    <history-entry file="handlers_test_go - 2019.05.21 at 15h 36m 08s.xml">
+      <configuration name="handlers_test.go" configurationId="GoTestRunConfiguration" />
+    </history-entry>
+    <history-entry file="handlers_test_go_(1) - 2019.05.21 at 15h 46m 08s.xml">
+      <configuration name="handlers_test.go (1)" configurationId="GoTestRunConfiguration" />
+    </history-entry>
+  </component>
   <component name="ToolWindowManager">
     <frame x="0" y="23" width="1440" height="812" extended-state="0" />
-    <editor active="true" />
     <layout>
       <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.25679544" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
@@ -543,110 +525,19 @@
   <component name="VcsContentAnnotationSettings">
     <option name="myLimit" value="2678400000" />
   </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
+          <url>file://$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part4/part4/router.go</url>
+          <line>7</line>
+          <properties />
+          <option name="timeStamp" value="11" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
+  </component>
   <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/src/github.com/rpcx-ecosystem/README.md">
-      <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
-        <state split_layout="SPLIT">
-          <first_editor />
-          <second_editor>
-            <markdownNavigatorState />
-          </second_editor>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/github.com/rpcx-ecosystem/rpcx-examples3/102basic/server.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="30">
-          <caret line="2" column="7" lean-forward="true" selection-start-line="2" selection-start-column="7" selection-end-line="2" selection-end-column="7" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/github.com/rpcx-ecosystem/gateway.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="30">
-          <caret line="2" column="7" lean-forward="true" selection-start-line="2" selection-start-column="7" selection-end-line="2" selection-end-column="7" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/../../ABC-J2EE-DEV/cfs-master/src/github.com/rpcx-ecosystem/rpcx-gateway/cmd/gateway.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="405">
-          <caret line="37" column="14" selection-start-line="37" selection-start-column="14" selection-end-line="37" selection-end-column="14" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file:///usr/local/Cellar/go/1.12.3/libexec/src/net/http/request.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-5738">
-          <caret line="801" column="5" selection-start-line="801" selection-start-column="5" selection-end-line="801" selection-end-column="5" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/github.com/rpcx-ecosystem/examples/golang/example1/README.md">
-      <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
-        <state split_layout="SPLIT">
-          <first_editor relative-caret-position="105">
-            <caret line="7" column="31" lean-forward="true" selection-start-line="7" selection-start-column="31" selection-end-line="7" selection-end-column="31" />
-          </first_editor>
-          <second_editor>
-            <markdownNavigatorState />
-          </second_editor>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/github.com/rpcx-ecosystem/rpcx-examples3/selector/roundrobin/server.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="370">
-          <caret line="37" selection-start-line="37" selection-end-line="37" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/../rpcx-4.0-release/src/github.com/smallnest/rpcx/README.md">
-      <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
-        <state split_layout="SPLIT">
-          <first_editor relative-caret-position="-1841" />
-          <second_editor>
-            <markdownNavigatorState />
-          </second_editor>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/../rpcx-4.0-release/src/github.com/smallnest/rpcx/serverplugin/zookeeper_test.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="360">
-          <caret line="24" column="20" selection-start-line="24" selection-start-column="20" selection-end-line="24" selection-end-column="20" />
-          <folding>
-            <element signature="e#43#151#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/../rpcx-4.0-release/src/github.com/smallnest/rpcx/serverplugin/rate_limiting.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="165">
-          <caret line="16" column="57" selection-start-line="16" selection-start-column="57" selection-end-line="16" selection-end-column="57" />
-          <folding>
-            <element signature="e#22#77#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/../rpcx-4.0-release/src/github.com/smallnest/rpcx/serverplugin/mdns.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="195">
-          <caret line="25" column="25" selection-start-line="25" selection-start-column="25" selection-end-line="25" selection-end-column="25" />
-          <folding>
-            <element signature="e#22#188#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/../rpcx-4.0-release/src/github.com/smallnest/rpcx/serverplugin/consul.go">
-      <provider selected="true" editor-type-id="text-editor" />
-    </entry>
-    <entry file="file://$PROJECT_DIR$/../rpcx-4.0-release/src/github.com/smallnest/rpcx/serverplugin/alias.go">
-      <provider selected="true" editor-type-id="text-editor" />
-    </entry>
     <entry file="file://$PROJECT_DIR$/src/github.com/rpcx-ecosystem/converter.go">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="-1250" />
@@ -890,7 +781,7 @@
     <entry file="file://$PROJECT_DIR$/../rpcx-4.0-release/src/github.com/smallnest/rpcx/server/server.go">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="249">
-          <caret line="203" column="16" lean-forward="true" selection-start-line="203" selection-start-column="11" selection-end-line="203" selection-end-column="23" />
+          <caret line="203" column="16" selection-start-line="203" selection-start-column="11" selection-end-line="203" selection-end-column="23" />
         </state>
       </provider>
     </entry>
@@ -904,14 +795,14 @@
     <entry file="file:///usr/local/Cellar/go/1.12.3/libexec/src/net/http/server.go">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="45195">
-          <caret line="3037" column="1" lean-forward="true" selection-start-line="3037" selection-start-column="1" selection-end-line="3037" selection-end-column="1" />
+          <caret line="3037" column="1" selection-start-line="3037" selection-start-column="1" selection-end-line="3037" selection-end-column="1" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/../rpcx-4.0-release/src/github.com/smallnest/rpcx/server/gateway.go">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="196">
-          <caret line="59" column="36" lean-forward="true" selection-start-line="59" selection-start-column="36" selection-end-line="59" selection-end-column="36" />
+          <caret line="59" column="36" selection-start-line="59" selection-start-column="36" selection-end-line="59" selection-end-column="36" />
           <folding>
             <element signature="e#101#356#0" expanded="true" />
           </folding>
@@ -921,7 +812,7 @@
     <entry file="file://$PROJECT_DIR$/../rpcx-4.0-release/src/github.com/smallnest/rpcx/serverplugin/zookeeper.go">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="645">
-          <caret line="43" column="9" lean-forward="true" selection-start-line="43" selection-start-column="9" selection-end-line="43" selection-end-column="9" />
+          <caret line="43" column="9" selection-start-line="43" selection-start-column="9" selection-end-line="43" selection-end-column="9" />
           <folding>
             <element signature="e#23#286#0" expanded="true" />
           </folding>
@@ -931,26 +822,116 @@
     <entry file="file://$PROJECT_DIR$/../../ABC-J2EE-DEV/cfs-master/src/github.com/julienschmidt/httprouter/router.go">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="-767">
-          <caret line="96" column="19" lean-forward="true" selection-start-line="96" selection-start-column="19" selection-end-line="96" selection-end-column="19" />
+          <caret line="96" column="19" selection-start-line="96" selection-start-column="19" selection-end-line="96" selection-end-column="19" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/src/github.com/rpcx-ecosystem/examples/httprouter/sample1/simple.go">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="345">
-          <caret line="23" lean-forward="true" selection-start-line="23" selection-end-line="23" />
+          <caret line="23" selection-start-line="23" selection-end-line="23" />
           <folding>
             <element signature="e#16#88#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part4/.gitignore">
+      <provider selected="true" editor-type-id="text-editor" />
+    </entry>
     <entry file="file://$PROJECT_DIR$/src/github.com/rpcx-ecosystem/examples/httprouter/sample2/multaction.go">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="189">
-          <caret line="81" column="7" selection-start-line="81" selection-start-column="7" selection-end-line="81" selection-end-column="7" />
+        <state relative-caret-position="-314">
+          <caret line="35" column="1" selection-start-line="35" selection-start-column="1" selection-end-line="35" selection-end-column="1" />
           <folding>
             <element signature="e#13#106#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part4/part4/logger.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="75">
+          <caret line="11" column="85" lean-forward="true" selection-start-line="11" selection-start-column="85" selection-end-line="11" selection-end-column="85" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part4/part4/responses.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="240">
+          <caret line="16" selection-start-line="16" selection-end-line="16" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part4/part4/models.go">
+      <provider selected="true" editor-type-id="text-editor" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part4/part4/routes.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="223">
+          <caret line="19" column="21" selection-start-line="19" selection-start-column="21" selection-end-line="19" selection-end-column="21" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part4/part4/router.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="105">
+          <caret line="7" column="30" selection-start-line="7" selection-start-column="30" selection-end-line="7" selection-end-column="30" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part3/part3/responses.go">
+      <provider selected="true" editor-type-id="text-editor" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part3/main.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="208">
+          <caret line="24" column="41" selection-start-line="24" selection-start-column="41" selection-end-line="24" selection-end-column="41" />
+          <folding>
+            <element signature="e#14#149#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part2/main.go">
+      <provider selected="true" editor-type-id="text-editor" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part3/part3/handlers.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="-202">
+          <caret line="2" column="7" selection-start-line="2" selection-start-column="7" selection-end-line="2" selection-end-column="7" />
+          <folding>
+            <element signature="e#14#100#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part4/part4/handlers.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="343">
+          <caret line="83" selection-start-line="83" selection-end-line="83" />
+          <folding>
+            <element signature="e#14#119#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part4/part4/handlers_test.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="-302">
+          <caret line="47" column="123" selection-start-line="47" selection-start-column="123" selection-end-line="47" selection-end-column="123" />
+          <folding>
+            <element signature="e#14#108#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/github.com/rpcx-ecosystem/httprouter-tutorial/part4/main.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="180">
+          <caret line="12" selection-start-line="12" selection-end-line="12" />
+          <folding>
+            <element signature="e#14#43#0" expanded="true" />
           </folding>
         </state>
       </provider>

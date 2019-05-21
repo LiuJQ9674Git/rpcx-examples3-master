@@ -1,4 +1,4 @@
-package main
+package part4
 
 import (
 	"net/http"
@@ -77,7 +77,8 @@ func TestBookIndex(t *testing.T) {
 }
 
 // Mocks a handler and returns a httptest.ResponseRecorder
-func newRequestRecorder(req *http.Request, method string, strPath string, fnHandler func(w http.ResponseWriter, r *http.Request, param httprouter.Params)) *httptest.ResponseRecorder {
+func newRequestRecorder(req *http.Request, method string, strPath string,
+	fnHandler func(w http.ResponseWriter, r *http.Request, param httprouter.Params)) *httptest.ResponseRecorder {
 	router := httprouter.New()
 	router.Handle(method, strPath, fnHandler)
 	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.

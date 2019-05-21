@@ -1,4 +1,4 @@
-package main
+package part4
 
 type Book struct {
 	// The main identifier for the Book. This will be unique.
