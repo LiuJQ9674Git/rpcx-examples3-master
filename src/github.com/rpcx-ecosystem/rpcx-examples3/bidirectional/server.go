@@ -47,7 +47,10 @@ func main() {
 	fmt.Printf("start to send messages to %s\n", clientConn.RemoteAddr().String())
 	for {
 		if clientConn != nil {
-			err := s.SendMessage(clientConn, "test_service_path", "test_service_method", nil, []byte("abcde"))
+			err := s.SendMessage(clientConn,
+				"test_service_path",
+				"test_service_method",
+				nil, []byte("abcde"))
 			if err != nil {
 				fmt.Printf("failed to send messsage to %s: %v\n", clientConn.RemoteAddr().String(), err)
 				clientConn = nil
