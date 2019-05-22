@@ -1,0 +1,811 @@
+<html>
+<head>
+<title>xclient.go</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #000080; font-weight: bold;}
+.s1 { color: #000000;}
+.s2 { color: #000000;}
+.s3 { color: #008000; font-weight: bold;}
+.s4 { color: #808080; font-style: italic;}
+.s5 { color: #000000;}
+.s6 { color: #0000ff;}
+</style>
+</head>
+<body bgcolor="#ffffff">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#c0c0c0" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+xclient.go</font>
+</center></td></tr></table>
+<pre><span class="s0">package </span>client
+
+<span class="s0">import </span>(
+	<span class="s3">&quot;context&quot;</span>
+	&quot;errors&quot;
+	&quot;net/url&quot;
+	&quot;reflect&quot;
+	&quot;strings&quot;
+	&quot;sync&quot;
+	&quot;time&quot;
+
+	ex <span class="s3">&quot;github.com/smallnest/rpcx/errors&quot;</span>
+	&quot;github.com/smallnest/rpcx/protocol&quot;
+	&quot;github.com/smallnest/rpcx/share&quot;
+)
+
+<span class="s0">var </span>(
+	<span class="s4">// ErrXClientShutdown xclient is shutdown.</span>
+	ErrXClientShutdown = errors.New(<span class="s3">&quot;xClient is shut down&quot;</span>)
+	<span class="s4">// ErrXClientNoServer selector can't found one server.</span>
+	ErrXClientNoServer = errors.New(<span class="s3">&quot;can not found any server&quot;</span>)
+	<span class="s4">// ErrServerUnavailable selected server is unavailable.</span>
+	ErrServerUnavailable = errors.New(<span class="s3">&quot;selected server is unavilable&quot;</span>)
+)
+
+<span class="s4">// XClient is an interface that used by client with service discovery and service governance.</span>
+// One XClient is used only for one service. You should create multiple XClient for multiple services.
+<span class="s0">type </span>XClient <span class="s0">interface </span>{
+	SetPlugins(plugins PluginContainer)
+	SetSelector(s Selector)
+	ConfigGeoSelector(latitude, longitude float64)
+	Auth(auth string)
+
+	Go(ctx context.Context, serviceMethod string, args <span class="s0">interface</span>{}, reply <span class="s0">interface</span>{}, done <span class="s0">chan </span>*Call) (*Call, error)
+	Call(ctx context.Context, serviceMethod string, args <span class="s0">interface</span>{}, reply <span class="s0">interface</span>{}) error
+	Broadcast(ctx context.Context, serviceMethod string, args <span class="s0">interface</span>{}, reply <span class="s0">interface</span>{}) error
+	Fork(ctx context.Context, serviceMethod string, args <span class="s0">interface</span>{}, reply <span class="s0">interface</span>{}) error
+	SendRaw(ctx context.Context, r *protocol.Message) (<span class="s0">map</span>[string]string, []byte, error)
+	Close() error
+}
+
+<span class="s4">// KVPair contains a key and a string.</span>
+<span class="s0">type </span>KVPair <span class="s0">struct </span>{
+	Key   string
+	Value string
+}
+
+<span class="s4">// ServiceDiscovery defines ServiceDiscovery of zookeeper, etcd and consul</span>
+<span class="s0">type </span>ServiceDiscovery <span class="s0">interface </span>{
+	GetServices() []*KVPair
+	WatchService() <span class="s0">chan </span>[]*KVPair
+	RemoveWatcher(ch <span class="s0">chan </span>[]*KVPair)
+	Clone(servicePath string) ServiceDiscovery
+	Close()
+}
+
+<span class="s0">type </span>xClient <span class="s0">struct </span>{
+	failMode     FailMode
+	selectMode   SelectMode
+	cachedClient <span class="s0">map</span>[string]RPCClient
+	breakers     sync.Map
+	servicePath  string
+	option       Option
+
+	mu        sync.RWMutex
+	servers   <span class="s0">map</span>[string]string
+	discovery ServiceDiscovery
+	selector  Selector
+
+	isShutdown bool
+
+	<span class="s4">// auth is a string for Authentication, for example, &quot;Bearer mF_9.B5f-4.1JqM&quot;</span>
+	auth string
+
+	Plugins PluginContainer
+
+	ch <span class="s0">chan </span>[]*KVPair
+
+	serverMessageChan <span class="s0">chan</span>&lt;- *protocol.Message
+}
+
+<span class="s4">// NewXClient creates a XClient that supports service discovery and service governance.</span>
+<span class="s0">func </span>NewXClient(servicePath string, failMode FailMode,
+	selectMode SelectMode, discovery ServiceDiscovery, option Option) XClient {
+	client := &amp;xClient{
+		failMode:     failMode,
+		selectMode:   selectMode,
+		discovery:    discovery,<span class="s4">//zk</span>
+		servicePath:  servicePath,
+		cachedClient: make(<span class="s0">map</span>[string]RPCClient),
+		option:       option,
+	}
+
+	servers := make(<span class="s0">map</span>[string]string)
+	pairs := discovery.GetServices()<span class="s4">//zk</span>
+	<span class="s0">for </span>_, p := <span class="s0">range </span>pairs {
+		servers[p.Key] = p.Value
+	}
+	filterByStateAndGroup(client.option.Group, servers)
+
+	client.servers = servers
+	<span class="s0">if </span>selectMode != Closest &amp;&amp; selectMode != SelectByUser {
+		client.selector = newSelector(selectMode, servers)
+	}
+
+	client.Plugins = &amp;pluginContainer{}
+	<span class="s4">//</span>
+	ch := client.discovery.WatchService()
+	<span class="s0">if </span>ch != nil {
+		client.ch = ch
+		<span class="s0">go </span>client.watch(ch)
+	}
+
+	<span class="s0">return </span>client
+}
+
+<span class="s4">// NewBidirectionalXClient creates a new xclient that can receive notifications from servers.</span>
+<span class="s0">func </span>NewBidirectionalXClient(servicePath string, failMode FailMode,
+	selectMode SelectMode, discovery ServiceDiscovery,
+	option Option, serverMessageChan <span class="s0">chan</span>&lt;- *protocol.Message) XClient {
+	client := &amp;xClient{
+		failMode:          failMode,
+		selectMode:        selectMode,
+		discovery:         discovery,
+		servicePath:       servicePath,
+		cachedClient:      make(<span class="s0">map</span>[string]RPCClient),
+		option:            option,
+		serverMessageChan: serverMessageChan,
+	}
+
+	servers := make(<span class="s0">map</span>[string]string)
+	pairs := discovery.GetServices()
+	<span class="s0">for </span>_, p := <span class="s0">range </span>pairs {
+		servers[p.Key] = p.Value
+	}
+	filterByStateAndGroup(client.option.Group, servers)
+	client.servers = servers
+	<span class="s0">if </span>selectMode != Closest &amp;&amp; selectMode != SelectByUser {
+		client.selector = newSelector(selectMode, servers)
+	}
+
+	client.Plugins = &amp;pluginContainer{}
+	<span class="s4">//zk监控</span>
+	ch := client.discovery.WatchService()
+	<span class="s0">if </span>ch != nil {
+		client.ch = ch
+		<span class="s4">//zk异步监控</span>
+		<span class="s0">go </span>client.watch(ch)
+	}
+
+	<span class="s0">return </span>client
+}
+
+<span class="s4">// SetSelector sets customized selector by users.</span>
+<span class="s0">func </span>(c *xClient) SetSelector(s Selector) {
+	c.mu.RLock()
+	s.UpdateServer(c.servers)
+	c.mu.RUnlock()
+
+	c.selector = s
+}
+
+<span class="s4">// SetPlugins sets client's plugins.</span>
+<span class="s0">func </span>(c *xClient) SetPlugins(plugins PluginContainer) {
+	c.Plugins = plugins
+}
+
+<span class="s4">// ConfigGeoSelector sets location of client's latitude and longitude,</span>
+// and use newGeoSelector.
+<span class="s0">func </span>(c *xClient) ConfigGeoSelector(latitude, longitude float64) {
+	c.selector = newGeoSelector(c.servers, latitude, longitude)
+	c.selectMode = Closest
+}
+
+<span class="s4">// Auth sets s token for Authentication.</span>
+<span class="s0">func </span>(c *xClient) Auth(auth string) {
+	c.auth = auth
+}
+
+<span class="s4">// watch changes of service and update cached clients.</span>
+// KVPair通道
+<span class="s0">func </span>(c *xClient) watch(ch <span class="s0">chan </span>[]*KVPair) {
+	<span class="s0">for </span>pairs := <span class="s0">range </span>ch {
+		servers := make(<span class="s0">map</span>[string]string)
+		<span class="s0">for </span>_, p := <span class="s0">range </span>pairs {
+			servers[p.Key] = p.Value
+		}
+		c.mu.Lock()
+		filterByStateAndGroup(c.option.Group, servers)
+		c.servers = servers
+
+		<span class="s0">if </span>c.selector != nil {
+			c.selector.UpdateServer(servers)
+		}
+
+		c.mu.Unlock()
+	}
+}
+
+<span class="s4">//1.切片为传引用</span>
+//2.根据服务状态删除
+<span class="s0">func </span>filterByStateAndGroup(group string, servers <span class="s0">map</span>[string]string) {
+	<span class="s0">for </span>k, v := <span class="s0">range </span>servers {
+		<span class="s0">if </span>values, err := url.ParseQuery(v); err == nil {
+			<span class="s0">if </span>state := values.Get(<span class="s3">&quot;state&quot;</span>); state == <span class="s3">&quot;inactive&quot; </span>{
+				delete(servers, k)
+			}
+			<span class="s0">if </span>group != <span class="s3">&quot;&quot; </span>&amp;&amp; group != values.Get(<span class="s3">&quot;group&quot;</span>) {
+				delete(servers, k)
+			}
+		}
+	}
+}
+
+<span class="s4">// selects a client from candidates base on c.selectMode</span>
+<span class="s0">func </span>(c *xClient) selectClient(ctx context.Context, servicePath,
+	serviceMethod string, args <span class="s0">interface</span>{}) (string, RPCClient, error) {
+	k := c.selector.Select(ctx, servicePath, serviceMethod, args)
+	<span class="s0">if </span>k == <span class="s3">&quot;&quot; </span>{
+		<span class="s0">return </span><span class="s3">&quot;&quot;</span>, nil, ErrXClientNoServer
+	}
+	client, err := c.getCachedClient(k)
+	<span class="s0">return </span>k, client, err
+}
+
+<span class="s0">func </span>(c *xClient) getCachedClient(k string) (RPCClient, error) {
+	c.mu.RLock()
+	breaker, ok := c.breakers.Load(k)
+	<span class="s0">if </span>ok &amp;&amp; !breaker.(Breaker).Ready() {
+		c.mu.RUnlock()
+		<span class="s0">return </span>nil, ErrBreakerOpen
+	}
+
+	client := c.cachedClient[k]
+	<span class="s0">if </span>client != nil {
+		<span class="s0">if </span>!client.IsClosing() &amp;&amp; !client.IsShutdown() {
+			c.mu.RUnlock()
+			<span class="s0">return </span>client, nil
+		}
+		delete(c.cachedClient, k)
+		client.Close()
+	}
+	c.mu.RUnlock()
+
+	<span class="s4">//double check</span>
+	c.mu.Lock()
+	client = c.cachedClient[k]
+	<span class="s0">if </span>client == nil || client.IsShutdown() {
+		network, addr := splitNetworkAndAddress(k)
+		<span class="s0">if </span>network == <span class="s3">&quot;inprocess&quot; </span>{
+			client = InprocessClient
+		} <span class="s0">else </span>{
+			client = &amp;Client{
+				option:  c.option,
+				Plugins: c.Plugins,
+			}
+
+			<span class="s0">var </span>breaker <span class="s0">interface</span>{}
+			<span class="s0">if </span>c.option.GenBreaker != nil {
+				breaker, _ = c.breakers.LoadOrStore(k, c.option.GenBreaker())
+			}
+			err := client.Connect(network, addr)
+			<span class="s0">if </span>err != nil {
+				<span class="s0">if </span>breaker != nil {
+					breaker.(Breaker).Fail()
+				}
+				c.mu.Unlock()
+				<span class="s0">return </span>nil, err
+			}
+			<span class="s0">if </span>c.Plugins != nil {
+				c.Plugins.DoClientConnected((client.(*Client)).Conn)
+			}
+
+		}
+
+		client.RegisterServerMessageChan(c.serverMessageChan)
+
+		c.cachedClient[k] = client
+	}
+	c.mu.Unlock()
+
+	<span class="s0">return </span>client, nil
+}
+
+<span class="s0">func </span>(c *xClient) getCachedClientWithoutLock(k string) (RPCClient, error) {
+	client := c.cachedClient[k]
+	<span class="s0">if </span>client != nil {
+		<span class="s0">if </span>!client.IsClosing() &amp;&amp; !client.IsShutdown() {
+			<span class="s0">return </span>client, nil
+		}
+	}
+
+	<span class="s4">//double check</span>
+	client = c.cachedClient[k]
+	<span class="s0">if </span>client == nil {
+		network, addr := splitNetworkAndAddress(k)
+		<span class="s0">if </span>network == <span class="s3">&quot;inprocess&quot; </span>{
+			client = InprocessClient
+		} <span class="s0">else </span>{
+			client = &amp;Client{
+				option:  c.option,
+				Plugins: c.Plugins,
+			}
+			err := client.Connect(network, addr)
+			<span class="s0">if </span>err != nil {
+				<span class="s0">return </span>nil, err
+			}
+		}
+
+		client.RegisterServerMessageChan(c.serverMessageChan)
+
+		c.cachedClient[k] = client
+	}
+
+	<span class="s0">return </span>client, nil
+}
+
+<span class="s0">func </span>(c *xClient) removeClient(k string, client RPCClient) {
+	c.mu.Lock()
+	cl := c.cachedClient[k]
+	<span class="s0">if </span>cl == client {
+		delete(c.cachedClient, k)
+	}
+	c.mu.Unlock()
+
+	<span class="s0">if </span>client != nil {
+		client.UnregisterServerMessageChan()
+		client.Close()
+	}
+}
+
+<span class="s0">func </span>splitNetworkAndAddress(server string) (string, string) {
+	ss := strings.SplitN(server, <span class="s3">&quot;@&quot;</span>, <span class="s6">2</span>)
+	<span class="s0">if </span>len(ss) == <span class="s6">1 </span>{
+		<span class="s0">return </span><span class="s3">&quot;tcp&quot;</span>, server
+	}
+
+	<span class="s0">return </span>ss[<span class="s6">0</span>], ss[<span class="s6">1</span>]
+}
+
+<span class="s4">// Go invokes the function asynchronously. It returns the Call structure representing the invocation. </span>
+// The done channel will signal when the call is complete by returning the same Call object. 
+// If done is nil, Go will allocate a new channel. 
+// If non-nil, done must be buffered or Go will deliberately crash.
+// It does not use FailMode.
+<span class="s0">func </span>(c *xClient) Go(ctx context.Context, serviceMethod string, 
+	args <span class="s0">interface</span>{}, reply <span class="s0">interface</span>{}, done <span class="s0">chan </span>*Call) (*Call, error) {
+	<span class="s0">if </span>c.isShutdown {
+		<span class="s0">return </span>nil, ErrXClientShutdown
+	}
+
+	<span class="s0">if </span>c.auth != <span class="s3">&quot;&quot; </span>{
+		metadata := ctx.Value(share.ReqMetaDataKey)
+		<span class="s0">if </span>metadata == nil {
+			<span class="s0">return </span>nil, errors.New(<span class="s3">&quot;must set ReqMetaDataKey in context&quot;</span>)
+		}
+		m := metadata.(<span class="s0">map</span>[string]string)
+		m[share.AuthKey] = c.auth
+	}
+
+	_, client, err := c.selectClient(ctx, c.servicePath, serviceMethod, args)
+	<span class="s0">if </span>err != nil {
+		<span class="s0">return </span>nil, err
+	}
+	<span class="s0">return </span>client.Go(ctx, c.servicePath, serviceMethod, args, reply, done), nil
+}
+
+<span class="s4">// Call invokes the named function, waits for it to complete, and returns its error status.</span>
+// It handles errors base on FailMode.
+<span class="s0">func </span>(c *xClient) Call(ctx context.Context, serviceMethod string, args <span class="s0">interface</span>{}, reply <span class="s0">interface</span>{}) error {
+	<span class="s0">if </span>c.isShutdown {
+		<span class="s0">return </span>ErrXClientShutdown
+	}
+
+	<span class="s0">if </span>c.auth != <span class="s3">&quot;&quot; </span>{
+		metadata := ctx.Value(share.ReqMetaDataKey)
+		<span class="s0">if </span>metadata == nil {
+			<span class="s0">return </span>errors.New(<span class="s3">&quot;must set ReqMetaDataKey in context&quot;</span>)
+		}
+		m := metadata.(<span class="s0">map</span>[string]string)
+		m[share.AuthKey] = c.auth
+	}
+
+	<span class="s0">var </span>err error
+	k, client, err := c.selectClient(ctx, c.servicePath, serviceMethod, args)
+	<span class="s0">if </span>err != nil {
+		<span class="s0">if </span>c.failMode == Failfast {<span class="s4">//快速失败</span>
+			<span class="s0">return </span>err
+		}
+	}
+
+	<span class="s0">var </span>e error
+	<span class="s0">switch </span>c.failMode {
+	<span class="s0">case </span>Failtry: <span class="s4">//失败重试当前服务器。</span>
+		retries := c.option.Retries
+		<span class="s0">for </span>retries &gt; <span class="s6">0 </span>{<span class="s4">//</span>
+			retries--
+
+			<span class="s0">if </span>client != nil {
+				err = c.wrapCall(ctx, client, serviceMethod, args, reply)
+				<span class="s0">if </span>err == nil {
+					<span class="s0">return </span>nil
+				}
+				<span class="s0">if </span>_, ok := err.(ServiceError); ok {
+					<span class="s0">return </span>err
+				}
+			}
+
+			c.removeClient(k, client)
+			client, e = c.getCachedClient(k)
+		}
+		<span class="s0">if </span>err == nil {
+			err = e
+		}
+		<span class="s0">return </span>err
+	<span class="s0">case </span>Failover: <span class="s4">//失败自动切换，当出现失败，重试其它服务器。</span>
+		retries := c.option.Retries
+		<span class="s0">for </span>retries &gt; <span class="s6">0 </span>{<span class="s4">//</span>
+			retries--
+
+			<span class="s0">if </span>client != nil {
+				err = c.wrapCall(ctx, client, serviceMethod, args, reply)
+				<span class="s0">if </span>err == nil {
+					<span class="s0">return </span>nil
+				}
+				<span class="s0">if </span>_, ok := err.(ServiceError); ok {
+					<span class="s0">return </span>err
+				}
+			}
+
+			c.removeClient(k, client)
+			<span class="s4">//select another server</span>
+			//失败自动切换，当出现失败，重试其它服务器。
+			k, client, e = c.selectClient(ctx, c.servicePath, serviceMethod, args)
+		}
+
+		<span class="s0">if </span>err == nil {
+			err = e
+		}
+		<span class="s0">return </span>err
+	<span class="s0">case </span>Failbackup:
+		ctx, cancelFn := context.WithCancel(ctx)
+		<span class="s0">defer </span>cancelFn()
+		call1 := make(<span class="s0">chan </span>*Call, <span class="s6">10</span>)
+		call2 := make(<span class="s0">chan </span>*Call, <span class="s6">10</span>)
+
+		<span class="s0">var </span>reply1, reply2 <span class="s0">interface</span>{}
+
+		<span class="s0">if </span>reply != nil {
+			reply1 = reflect.New(reflect.ValueOf(reply).Elem().Type()).Interface()
+			reply2 = reflect.New(reflect.ValueOf(reply).Elem().Type()).Interface()
+		}
+
+		_, err1 := c.Go(ctx, serviceMethod, args, reply1, call1)
+
+		t := time.NewTimer(c.option.BackupLatency)
+		<span class="s0">select </span>{
+		<span class="s0">case </span>&lt;-ctx.Done(): <span class="s4">//cancel by context</span>
+			err = ctx.Err()
+			<span class="s0">return </span>err
+		<span class="s0">case </span>call := &lt;-call1:
+			err = call.Error
+			<span class="s0">if </span>err == nil &amp;&amp; reply != nil {
+				reflect.ValueOf(reply).Elem().Set(reflect.ValueOf(reply1).Elem())
+			}
+			<span class="s0">return </span>err
+		<span class="s0">case </span>&lt;-t.C:
+
+		}
+		_, err2 := c.Go(ctx, serviceMethod, args, reply2, call2)
+		<span class="s0">if </span>err2 != nil {
+			<span class="s0">if </span>_, ok := err.(ServiceError); !ok {
+				c.removeClient(k, client)
+			}
+			err = err1
+			<span class="s0">return </span>err
+		}
+
+		<span class="s0">select </span>{
+		<span class="s0">case </span>&lt;-ctx.Done(): <span class="s4">//cancel by context</span>
+			err = ctx.Err()
+		<span class="s0">case </span>call := &lt;-call1:
+			err = call.Error
+			<span class="s0">if </span>err == nil &amp;&amp; reply != nil &amp;&amp; reply1 != nil {
+				reflect.ValueOf(reply).Elem().Set(reflect.ValueOf(reply1).Elem())
+			}
+		<span class="s0">case </span>call := &lt;-call2:
+			err = call.Error
+			<span class="s0">if </span>err == nil &amp;&amp; reply != nil &amp;&amp; reply2 != nil {
+				reflect.ValueOf(reply).Elem().Set(reflect.ValueOf(reply2).Elem())
+			}
+		}
+
+		<span class="s0">return </span>err
+	<span class="s0">default</span>: <span class="s4">//Failfast</span>
+		err = c.wrapCall(ctx, client, serviceMethod, args, reply)
+		<span class="s0">if </span>err != nil {
+			<span class="s0">if </span>_, ok := err.(ServiceError); !ok {
+				c.removeClient(k, client)
+			}
+		}
+
+		<span class="s0">return </span>err
+	}
+}
+
+<span class="s0">func </span>(c *xClient) SendRaw(ctx context.Context, r *protocol.Message) (<span class="s0">map</span>[string]string, []byte, error) {
+	<span class="s0">if </span>c.isShutdown {
+		<span class="s0">return </span>nil, nil, ErrXClientShutdown
+	}
+
+	<span class="s0">if </span>c.auth != <span class="s3">&quot;&quot; </span>{
+		metadata := ctx.Value(share.ReqMetaDataKey)
+		<span class="s0">if </span>metadata == nil {
+			<span class="s0">return </span>nil, nil, errors.New(<span class="s3">&quot;must set ReqMetaDataKey in context&quot;</span>)
+		}
+		m := metadata.(<span class="s0">map</span>[string]string)
+		m[share.AuthKey] = c.auth
+	}
+
+	<span class="s0">var </span>err error
+	k, client, err := c.selectClient(ctx, r.ServicePath, r.ServiceMethod, r.Payload)
+
+	<span class="s0">if </span>err != nil {
+		<span class="s0">if </span>c.failMode == Failfast {
+			<span class="s0">return </span>nil, nil, err
+		}
+
+		<span class="s0">if </span>_, ok := err.(ServiceError); ok {
+			<span class="s0">return </span>nil, nil, err
+		}
+	}
+
+	<span class="s0">var </span>e error
+	<span class="s0">switch </span>c.failMode {
+	<span class="s0">case </span>Failtry:
+		retries := c.option.Retries
+		<span class="s0">for </span>retries &gt; <span class="s6">0 </span>{
+			retries--
+			<span class="s0">if </span>client != nil {
+				m, payload, err := client.SendRaw(ctx, r)
+				<span class="s0">if </span>err == nil {
+					<span class="s0">return </span>m, payload, nil
+				}
+				<span class="s0">if </span>_, ok := err.(ServiceError); ok {
+					<span class="s0">return </span>nil, nil, err
+				}
+			}
+
+			c.removeClient(k, client)
+			client, e = c.getCachedClient(k)
+		}
+
+		<span class="s0">if </span>err == nil {
+			err = e
+		}
+		<span class="s0">return </span>nil, nil, err
+	<span class="s0">case </span>Failover:
+		retries := c.option.Retries
+		<span class="s0">for </span>retries &gt; <span class="s6">0 </span>{
+			retries--
+			<span class="s0">if </span>client != nil {
+				m, payload, err := client.SendRaw(ctx, r)
+				<span class="s0">if </span>err == nil {
+					<span class="s0">return </span>m, payload, nil
+				}
+				<span class="s0">if </span>_, ok := err.(ServiceError); ok {
+					<span class="s0">return </span>nil, nil, err
+				}
+			}
+
+			c.removeClient(k, client)
+			<span class="s4">//select another server</span>
+			k, client, e = c.selectClient(ctx, r.ServicePath, r.ServiceMethod, r.Payload)
+		}
+
+		<span class="s0">if </span>err == nil {
+			err = e
+		}
+		<span class="s0">return </span>nil, nil, err
+
+	<span class="s0">default</span>: <span class="s4">//Failfast</span>
+		m, payload, err := client.SendRaw(ctx, r)
+
+		<span class="s0">if </span>err != nil {
+			<span class="s0">if </span>_, ok := err.(ServiceError); !ok {
+				c.removeClient(k, client)
+			}
+		}
+
+		<span class="s0">return </span>m, payload, nil
+	}
+}
+<span class="s0">func </span>(c *xClient) wrapCall(ctx context.Context, client RPCClient, serviceMethod string, args <span class="s0">interface</span>{}, reply <span class="s0">interface</span>{}) error {
+	<span class="s0">if </span>client == nil {
+		<span class="s0">return </span>ErrServerUnavailable
+	}
+	c.Plugins.DoPreCall(ctx, c.servicePath, serviceMethod, args)
+	err := client.Call(ctx, c.servicePath, serviceMethod, args, reply)
+	c.Plugins.DoPostCall(ctx, c.servicePath, serviceMethod, args, reply, err)
+
+	<span class="s0">return </span>err
+}
+
+<span class="s4">// Broadcast sends requests to all servers and Success only when all servers return OK.</span>
+// FailMode and SelectMode are meanless for this method.
+// Please set timeout to avoid hanging.
+<span class="s0">func </span>(c *xClient) Broadcast(ctx context.Context, serviceMethod string, args <span class="s0">interface</span>{}, reply <span class="s0">interface</span>{}) error {
+	<span class="s0">if </span>c.isShutdown {
+		<span class="s0">return </span>ErrXClientShutdown
+	}
+
+	<span class="s0">if </span>c.auth != <span class="s3">&quot;&quot; </span>{
+		metadata := ctx.Value(share.ReqMetaDataKey)
+		<span class="s0">if </span>metadata == nil {
+			<span class="s0">return </span>errors.New(<span class="s3">&quot;must set ReqMetaDataKey in context&quot;</span>)
+		}
+		m := metadata.(<span class="s0">map</span>[string]string)
+		m[share.AuthKey] = c.auth
+	}
+
+	<span class="s0">var </span>clients = make(<span class="s0">map</span>[string]RPCClient)
+	c.mu.Lock()
+	<span class="s0">for </span>k := <span class="s0">range </span>c.servers {
+		client, err := c.getCachedClientWithoutLock(k)
+		<span class="s0">if </span>err != nil {
+			<span class="s0">continue</span>
+		}
+		clients[k] = client
+	}
+	c.mu.Unlock()
+
+	<span class="s0">if </span>len(clients) == <span class="s6">0 </span>{
+		<span class="s0">return </span>ErrXClientNoServer
+	}
+
+	<span class="s0">var </span>err = &amp;ex.MultiError{}
+	l := len(clients)
+	done := make(<span class="s0">chan </span>bool, l)
+	<span class="s0">for </span>k, client := <span class="s0">range </span>clients {
+		k := k
+		client := client
+		<span class="s0">go func</span>() {
+			e := c.wrapCall(ctx, client, serviceMethod, args, reply)
+			done &lt;- (e == nil)
+			<span class="s0">if </span>e != nil {
+				c.removeClient(k, client)
+				err.Append(e)
+			}
+		}()
+	}
+
+	timeout := time.After(time.Minute)
+check:
+	<span class="s0">for </span>{
+		<span class="s0">select </span>{
+		<span class="s0">case </span>result := &lt;-done:
+			l--
+			<span class="s0">if </span>l == <span class="s6">0 </span>|| !result { <span class="s4">// all returns or some one returns an error</span>
+				<span class="s0">break </span>check
+			}
+		<span class="s0">case </span>&lt;-timeout:
+			err.Append(errors.New((<span class="s3">&quot;timeout&quot;</span>)))
+			<span class="s0">break </span>check
+		}
+	}
+
+	<span class="s0">if </span>err.Error() == <span class="s3">&quot;[]&quot; </span>{
+		<span class="s0">return </span>nil
+	}
+	<span class="s0">return </span>err
+}
+
+<span class="s4">// Fork sends requests to all servers and Success once one server returns OK.</span>
+// FailMode and SelectMode are meanless for this method.
+<span class="s0">func </span>(c *xClient) Fork(ctx context.Context, serviceMethod string, args <span class="s0">interface</span>{}, reply <span class="s0">interface</span>{}) error {
+	<span class="s0">if </span>c.isShutdown {
+		<span class="s0">return </span>ErrXClientShutdown
+	}
+
+	<span class="s0">if </span>c.auth != <span class="s3">&quot;&quot; </span>{
+		metadata := ctx.Value(share.ReqMetaDataKey)
+		<span class="s0">if </span>metadata == nil {
+			<span class="s0">return </span>errors.New(<span class="s3">&quot;must set ReqMetaDataKey in context&quot;</span>)
+		}
+		m := metadata.(<span class="s0">map</span>[string]string)
+		m[share.AuthKey] = c.auth
+	}
+
+	<span class="s0">var </span>clients = make(<span class="s0">map</span>[string]RPCClient)
+	c.mu.Lock()
+	<span class="s0">for </span>k := <span class="s0">range </span>c.servers {
+		client, err := c.getCachedClientWithoutLock(k)
+		<span class="s0">if </span>err != nil {
+			<span class="s0">continue</span>
+		}
+		clients[k] = client
+	}
+	c.mu.Unlock()
+
+	<span class="s0">if </span>len(clients) == <span class="s6">0 </span>{
+		<span class="s0">return </span>ErrXClientNoServer
+	}
+
+	<span class="s0">var </span>err = &amp;ex.MultiError{}
+	l := len(clients)
+	done := make(<span class="s0">chan </span>bool, l)
+	<span class="s0">for </span>k, client := <span class="s0">range </span>clients {
+		k := k
+		client := client
+		<span class="s0">go func</span>() {
+			<span class="s0">var </span>clonedReply <span class="s0">interface</span>{}
+			<span class="s0">if </span>reply != nil {
+				clonedReply = reflect.New(reflect.ValueOf(reply).Elem().Type()).Interface()
+			}
+
+			e := c.wrapCall(ctx, client, serviceMethod, args, clonedReply)
+			<span class="s0">if </span>e == nil &amp;&amp; reply != nil &amp;&amp; clonedReply != nil {
+				reflect.ValueOf(reply).Elem().Set(reflect.ValueOf(clonedReply).Elem())
+			}
+			done &lt;- (e == nil)
+			<span class="s0">if </span>e != nil {
+				c.removeClient(k, client)
+				err.Append(e)
+			}
+
+		}()
+	}
+
+	timeout := time.After(time.Minute)
+check:
+	<span class="s0">for </span>{
+		<span class="s0">select </span>{
+		<span class="s0">case </span>result := &lt;-done:
+			l--
+			<span class="s0">if </span>result {
+				<span class="s0">return </span>nil
+			}
+			<span class="s0">if </span>l == <span class="s6">0 </span>{ <span class="s4">// all returns or some one returns an error</span>
+				<span class="s0">break </span>check
+			}
+
+		<span class="s0">case </span>&lt;-timeout:
+			err.Append(errors.New((<span class="s3">&quot;timeout&quot;</span>)))
+			<span class="s0">break </span>check
+		}
+	}
+
+	<span class="s0">if </span>err.Error() == <span class="s3">&quot;[]&quot; </span>{
+		<span class="s0">return </span>nil
+	}
+
+	<span class="s0">return </span>err
+}
+
+<span class="s4">// Close closes this client and its underlying connnections to services.</span>
+<span class="s0">func </span>(c *xClient) Close() error {
+	c.isShutdown = true
+
+	<span class="s0">var </span>errs []error
+	c.mu.Lock()
+	<span class="s0">for </span>k, v := <span class="s0">range </span>c.cachedClient {
+		e := v.Close()
+		<span class="s0">if </span>e != nil {
+			errs = append(errs, e)
+		}
+
+		delete(c.cachedClient, k)
+
+	}
+	c.mu.Unlock()
+
+	<span class="s0">go func</span>() {
+		<span class="s0">defer func</span>() {
+			<span class="s0">if </span>r := recover(); r != nil {
+
+			}
+		}()
+
+		c.discovery.RemoveWatcher(c.ch)
+		close(c.ch)
+	}()
+
+	<span class="s0">if </span>len(errs) &gt; <span class="s6">0 </span>{
+		<span class="s0">return </span>ex.NewMultiError(errs)
+	}
+	<span class="s0">return </span>nil
+}
+</pre>
+</body>
+</html>

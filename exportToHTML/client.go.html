@@ -1,0 +1,712 @@
+<html>
+<head>
+<title>client.go</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #000080; font-weight: bold;}
+.s1 { color: #000000;}
+.s2 { color: #000000;}
+.s3 { color: #008000; font-weight: bold;}
+.s4 { color: #808080; font-style: italic;}
+.s5 { color: #000000;}
+.s6 { color: #0000ff;}
+</style>
+</head>
+<body bgcolor="#ffffff">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#c0c0c0" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+client.go</font>
+</center></td></tr></table>
+<pre><span class="s0">package </span>client
+
+<span class="s0">import </span>(
+	<span class="s3">&quot;bufio&quot;</span>
+	&quot;bytes&quot;
+	&quot;context&quot;
+	&quot;crypto/tls&quot;
+	&quot;errors&quot;
+	&quot;io&quot;
+	&quot;net&quot;
+	&quot;net/url&quot;
+	&quot;strconv&quot;
+	&quot;sync&quot;
+	&quot;time&quot;
+
+	circuit <span class="s3">&quot;github.com/rubyist/circuitbreaker&quot;</span>
+	&quot;github.com/smallnest/rpcx/log&quot;
+	&quot;github.com/smallnest/rpcx/protocol&quot;
+	&quot;github.com/smallnest/rpcx/share&quot;
+)
+
+<span class="s0">const </span>(
+	XVersion           = <span class="s3">&quot;X-RPCX-Version&quot;</span>
+	XMessageType       = <span class="s3">&quot;X-RPCX-MesssageType&quot;</span>
+	XHeartbeat         = <span class="s3">&quot;X-RPCX-Heartbeat&quot;</span>
+	XOneway            = <span class="s3">&quot;X-RPCX-Oneway&quot;</span>
+	XMessageStatusType = <span class="s3">&quot;X-RPCX-MessageStatusType&quot;</span>
+	XSerializeType     = <span class="s3">&quot;X-RPCX-SerializeType&quot;</span>
+	XMessageID         = <span class="s3">&quot;X-RPCX-MessageID&quot;</span>
+	XServicePath       = <span class="s3">&quot;X-RPCX-ServicePath&quot;</span>
+	XServiceMethod     = <span class="s3">&quot;X-RPCX-ServiceMethod&quot;</span>
+	XMeta              = <span class="s3">&quot;X-RPCX-Meta&quot;</span>
+	XErrorMessage      = <span class="s3">&quot;X-RPCX-ErrorMessage&quot;</span>
+)
+
+<span class="s4">// ServiceError is an error from server.</span>
+<span class="s0">type </span>ServiceError string
+
+<span class="s0">func </span>(e ServiceError) Error() string {
+	<span class="s0">return </span>string(e)
+}
+
+<span class="s4">// DefaultOption is a common option configuration for client.</span>
+<span class="s0">var </span>DefaultOption = Option{
+	Retries:        <span class="s6">3</span>,
+	RPCPath:        share.DefaultRPCPath,
+	ConnectTimeout: <span class="s6">10 </span>* time.Second,
+	SerializeType:  protocol.MsgPack,
+	CompressType:   protocol.None,
+	BackupLatency:  <span class="s6">10 </span>* time.Millisecond,
+}
+
+<span class="s4">// Breaker is a CircuitBreaker interface.</span>
+<span class="s0">type </span>Breaker <span class="s0">interface </span>{
+	Call(<span class="s0">func</span>() error, time.Duration) error
+	Fail()
+	Success()
+	Ready() bool
+}
+
+<span class="s4">// CircuitBreaker is a default circuit breaker (RateBreaker(0.95, 100)).</span>
+<span class="s0">var </span>CircuitBreaker Breaker = circuit.NewRateBreaker(<span class="s6">0.95</span>, <span class="s6">100</span>)
+
+<span class="s4">// ErrShutdown connection is closed.</span>
+<span class="s0">var </span>(
+	ErrShutdown         = errors.New(<span class="s3">&quot;connection is shut down&quot;</span>)
+	ErrUnsupportedCodec = errors.New(<span class="s3">&quot;unsupported codec&quot;</span>)
+)
+
+<span class="s0">const </span>(
+	<span class="s4">// ReaderBuffsize is used for bufio reader.</span>
+	ReaderBuffsize = <span class="s6">16 </span>* <span class="s6">1024</span>
+	<span class="s4">// WriterBuffsize is used for bufio writer.</span>
+	WriterBuffsize = <span class="s6">16 </span>* <span class="s6">1024</span>
+)
+
+<span class="s0">type </span>seqKey <span class="s0">struct</span>{}
+
+<span class="s4">// RPCClient is interface that defines one client to call one server.</span>
+<span class="s0">type </span>RPCClient <span class="s0">interface </span>{
+	Connect(network, address string) error
+	Go(ctx context.Context, servicePath, serviceMethod string, args <span class="s0">interface</span>{}, reply <span class="s0">interface</span>{}, done <span class="s0">chan </span>*Call) *Call
+	Call(ctx context.Context, servicePath, serviceMethod string, args <span class="s0">interface</span>{}, reply <span class="s0">interface</span>{}) error
+	SendRaw(ctx context.Context, r *protocol.Message) (<span class="s0">map</span>[string]string, []byte, error)
+	Close() error
+
+	RegisterServerMessageChan(ch <span class="s0">chan</span>&lt;- *protocol.Message)
+	UnregisterServerMessageChan()
+
+	IsClosing() bool
+	IsShutdown() bool
+}
+
+<span class="s4">// Client represents a RPC client.</span>
+<span class="s0">type </span>Client <span class="s0">struct </span>{
+	option Option
+
+	Conn net.Conn
+	r    *bufio.Reader
+	<span class="s4">//w    *bufio.Writer</span>
+
+	mutex        sync.Mutex <span class="s4">// protects following</span>
+	seq          uint64
+	pending      <span class="s0">map</span>[uint64]*Call
+	closing      bool <span class="s4">// user has called Close</span>
+	shutdown     bool <span class="s4">// server has told us to stop</span>
+	pluginClosed bool <span class="s4">// the plugin has been called</span>
+
+	Plugins PluginContainer
+
+	ServerMessageChan <span class="s0">chan</span>&lt;- *protocol.Message
+}
+
+<span class="s4">// NewClient returns a new Client with the option.</span>
+<span class="s0">func </span>NewClient(option Option) *Client {
+	<span class="s0">return </span>&amp;Client{
+		option: option,
+	}
+}
+
+<span class="s4">// Option contains all options for creating clients.</span>
+<span class="s0">type </span>Option <span class="s0">struct </span>{
+	<span class="s4">// Group is used to select the services in the same group.</span>
+	// Services set group info in their meta.
+	// If it is empty, clients will ignore group.
+	Group string
+
+	<span class="s4">// Retries retries to send</span>
+	Retries int
+
+	<span class="s4">// TLSConfig for tcp and quic</span>
+	TLSConfig *tls.Config
+	<span class="s4">// kcp.BlockCrypt</span>
+	Block <span class="s0">interface</span>{}
+	<span class="s4">// RPCPath for http connection</span>
+	RPCPath string
+	<span class="s4">//ConnectTimeout sets timeout for dialing</span>
+	ConnectTimeout time.Duration
+	<span class="s4">// ReadTimeout sets readdeadline for underlying net.Conns</span>
+	ReadTimeout time.Duration
+	<span class="s4">// WriteTimeout sets writedeadline for underlying net.Conns</span>
+	WriteTimeout time.Duration
+
+	<span class="s4">// BackupLatency is used for Failbackup mode. rpcx will sends another request</span>
+	// if the first response doesn't return in BackupLatency time.
+	BackupLatency time.Duration
+
+	<span class="s4">// Breaker is used to config CircuitBreaker</span>
+	GenBreaker <span class="s0">func</span>() Breaker
+
+	SerializeType protocol.SerializeType
+	CompressType  protocol.CompressType
+
+	Heartbeat         bool
+	HeartbeatInterval time.Duration
+}
+
+<span class="s4">// Call represents an active RPC.</span>
+<span class="s0">type </span>Call <span class="s0">struct </span>{
+	ServicePath   string            <span class="s4">// The name of the service and method to call.</span>
+	ServiceMethod string            <span class="s4">// The name of the service and method to call.</span>
+	Metadata      <span class="s0">map</span>[string]string <span class="s4">//metadata</span>
+	ResMetadata   <span class="s0">map</span>[string]string
+	Args          <span class="s0">interface</span>{} <span class="s4">// The argument to the function (*struct).</span>
+	Reply         <span class="s0">interface</span>{} <span class="s4">// The reply from the function (*struct).</span>
+	Error         error       <span class="s4">// After completion, the error status.</span>
+	Done          <span class="s0">chan </span>*Call  <span class="s4">// Strobes when call is complete.</span>
+	Raw           bool        <span class="s4">// raw message or not</span>
+}
+
+<span class="s0">func </span>(call *Call) done() {
+	<span class="s0">select </span>{
+	<span class="s0">case </span>call.Done &lt;- call:
+		<span class="s4">// ok</span>
+	<span class="s0">default</span>:
+		log.Debug(<span class="s3">&quot;rpc: discarding Call reply due to insufficient Done chan capacity&quot;</span>)
+
+	}
+}
+
+<span class="s4">// RegisterServerMessageChan registers the channel that receives server requests.</span>
+<span class="s0">func </span>(client *Client) RegisterServerMessageChan(ch <span class="s0">chan</span>&lt;- *protocol.Message) {
+	client.ServerMessageChan = ch
+}
+
+<span class="s4">// UnregisterServerMessageChan removes ServerMessageChan.</span>
+<span class="s0">func </span>(client *Client) UnregisterServerMessageChan() {
+	client.ServerMessageChan = nil
+}
+
+<span class="s4">// IsClosing client is closing or not.</span>
+<span class="s0">func </span>(client *Client) IsClosing() bool {
+	<span class="s0">return </span>client.closing
+}
+
+<span class="s4">// IsShutdown client is shutdown or not.</span>
+<span class="s0">func </span>(client *Client) IsShutdown() bool {
+	<span class="s0">return </span>client.shutdown
+}
+
+<span class="s4">// Go invokes the function asynchronously. It returns the Call structure representing</span>
+// the invocation. The done channel will signal when the call is complete by returning
+// the same Call object. If done is nil, Go will allocate a new channel.
+// If non-nil, done must be buffered or Go will deliberately crash.
+<span class="s0">func </span>(client *Client) Go(ctx context.Context, servicePath, serviceMethod string,
+	args <span class="s0">interface</span>{}, reply <span class="s0">interface</span>{}, done <span class="s0">chan </span>*Call) *Call {
+	call := new(Call)
+	call.ServicePath = servicePath
+	call.ServiceMethod = serviceMethod
+	meta := ctx.Value(share.ReqMetaDataKey)
+	<span class="s0">if </span>meta != nil { <span class="s4">//copy meta in context to meta in requests</span>
+		call.Metadata = meta.(<span class="s0">map</span>[string]string)
+	}
+	call.Args = args
+	call.Reply = reply
+	<span class="s0">if </span>done == nil {
+		done = make(<span class="s0">chan </span>*Call, <span class="s6">10</span>) <span class="s4">// buffered.</span>
+	} <span class="s0">else </span>{
+		<span class="s4">// If caller passes done != nil, it must arrange that</span>
+		// done has enough buffer for the number of simultaneous
+		// RPCs that will be using that channel. If the channel
+		// is totally unbuffered, it's best not to run at all.
+		<span class="s0">if </span>cap(done) == <span class="s6">0 </span>{
+			log.Panic(<span class="s3">&quot;rpc: done channel is unbuffered&quot;</span>)
+		}
+	}
+	call.Done = done
+	client.send(ctx, call)
+	<span class="s0">return </span>call
+}
+
+<span class="s4">// Call invokes the named function, waits for it to complete, and returns its error status.</span>
+<span class="s0">func </span>(client *Client) Call(ctx context.Context, servicePath,
+	serviceMethod string, args <span class="s0">interface</span>{}, reply <span class="s0">interface</span>{}) error {
+	<span class="s0">return </span>client.call(ctx, servicePath, serviceMethod, args, reply)
+}
+
+<span class="s0">func </span>(client *Client) call(ctx context.Context, servicePath,
+	serviceMethod string, args <span class="s0">interface</span>{}, reply <span class="s0">interface</span>{}) error {
+	seq := new(uint64)
+	ctx = context.WithValue(ctx, seqKey{}, seq)
+	Done := client.Go(ctx, servicePath, serviceMethod, args, reply, make(<span class="s0">chan </span>*Call, <span class="s6">1</span>)).Done
+
+	<span class="s0">var </span>err error
+	<span class="s0">select </span>{
+	<span class="s0">case </span>&lt;-ctx.Done(): <span class="s4">//cancel by context</span>
+		client.mutex.Lock()
+		call := client.pending[*seq]
+		delete(client.pending, *seq)
+		client.mutex.Unlock()
+		<span class="s0">if </span>call != nil {
+			call.Error = ctx.Err()
+			call.done()
+		}
+
+		<span class="s0">return </span>ctx.Err()
+	<span class="s0">case </span>call := &lt;-Done:
+		err = call.Error
+		meta := ctx.Value(share.ResMetaDataKey)
+		<span class="s0">if </span>meta != nil &amp;&amp; len(call.ResMetadata) &gt; <span class="s6">0 </span>{
+			resMeta := meta.(<span class="s0">map</span>[string]string)
+			<span class="s0">for </span>k, v := <span class="s0">range </span>call.ResMetadata {
+				resMeta[k] = v
+			}
+		}
+	}
+
+	<span class="s0">return </span>err
+}
+
+<span class="s4">// SendRaw sends raw messages. You don't care args and replys.</span>
+<span class="s0">func </span>(client *Client) SendRaw(ctx context.Context,
+	r *protocol.Message) (<span class="s0">map</span>[string]string, []byte, error) {
+	ctx = context.WithValue(ctx, seqKey{}, r.Seq())
+
+	call := new(Call)
+	call.Raw = true
+	call.ServicePath = r.ServicePath
+	call.ServiceMethod = r.ServiceMethod
+	meta := ctx.Value(share.ReqMetaDataKey)
+
+	rmeta := make(<span class="s0">map</span>[string]string)
+	<span class="s0">if </span>meta != nil {
+		<span class="s0">for </span>k, v := <span class="s0">range </span>meta.(<span class="s0">map</span>[string]string) {
+			rmeta[k] = v
+		}
+	}
+	<span class="s0">if </span>r.Metadata != nil {
+		<span class="s0">for </span>k, v := <span class="s0">range </span>r.Metadata {
+			rmeta[k] = v
+		}
+	}
+
+	<span class="s0">if </span>meta != nil { <span class="s4">//copy meta in context to meta in requests</span>
+		call.Metadata = rmeta
+	}
+	done := make(<span class="s0">chan </span>*Call, <span class="s6">10</span>)
+	call.Done = done
+
+	seq := r.Seq()
+	client.mutex.Lock()
+	<span class="s0">if </span>client.pending == nil {
+		client.pending = make(<span class="s0">map</span>[uint64]*Call)
+	}
+	client.pending[seq] = call
+	client.mutex.Unlock()
+
+	data := r.Encode()
+	_, err := client.Conn.Write(data)
+	<span class="s0">if </span>err != nil {
+		client.mutex.Lock()
+		call = client.pending[seq]
+		delete(client.pending, seq)
+		client.mutex.Unlock()
+		<span class="s0">if </span>call != nil {
+			call.Error = err
+			call.done()
+		}
+		<span class="s0">return </span>nil, nil, err
+	}
+	<span class="s0">if </span>r.IsOneway() {
+		client.mutex.Lock()
+		call = client.pending[seq]
+		delete(client.pending, seq)
+		client.mutex.Unlock()
+		<span class="s0">if </span>call != nil {
+			call.done()
+		}
+		<span class="s0">return </span>nil, nil, nil
+	}
+
+	<span class="s0">var </span>m <span class="s0">map</span>[string]string
+	<span class="s0">var </span>payload []byte
+
+	<span class="s0">select </span>{
+	<span class="s0">case </span>&lt;-ctx.Done(): <span class="s4">//cancel by context</span>
+		client.mutex.Lock()
+		call := client.pending[seq]
+		delete(client.pending, seq)
+		client.mutex.Unlock()
+		<span class="s0">if </span>call != nil {
+			call.Error = ctx.Err()
+			call.done()
+		}
+
+		<span class="s0">return </span>nil, nil, ctx.Err()
+	<span class="s0">case </span>call := &lt;-done:
+		err = call.Error
+		m = call.Metadata
+		<span class="s0">if </span>call.Reply != nil {
+			payload = call.Reply.([]byte)
+		}
+	}
+
+	<span class="s0">return </span>m, payload, err
+}
+
+<span class="s0">func </span>convertRes2Raw(res *protocol.Message) (<span class="s0">map</span>[string]string, []byte, error) {
+	m := make(<span class="s0">map</span>[string]string)
+	m[XVersion] = strconv.Itoa(int(res.Version()))
+	<span class="s0">if </span>res.IsHeartbeat() {
+		m[XHeartbeat] = <span class="s3">&quot;true&quot;</span>
+	}
+	<span class="s0">if </span>res.IsOneway() {
+		m[XOneway] = <span class="s3">&quot;true&quot;</span>
+	}
+	<span class="s0">if </span>res.MessageStatusType() == protocol.Error {
+		m[XMessageStatusType] = <span class="s3">&quot;Error&quot;</span>
+	} <span class="s0">else </span>{
+		m[XMessageStatusType] = <span class="s3">&quot;Normal&quot;</span>
+	}
+
+	<span class="s0">if </span>res.CompressType() == protocol.Gzip {
+		m[<span class="s3">&quot;Content-Encoding&quot;</span>] = <span class="s3">&quot;gzip&quot;</span>
+	}
+
+	m[XMeta] = urlencode(res.Metadata)
+	m[XSerializeType] = strconv.Itoa(int(res.SerializeType()))
+	m[XMessageID] = strconv.FormatUint(res.Seq(), <span class="s6">10</span>)
+	m[XServicePath] = res.ServicePath
+	m[XServiceMethod] = res.ServiceMethod
+
+	<span class="s0">return </span>m, res.Payload, nil
+}
+
+<span class="s0">func </span>urlencode(data <span class="s0">map</span>[string]string) string {
+	<span class="s0">if </span>len(data) == <span class="s6">0 </span>{
+		<span class="s0">return </span><span class="s3">&quot;&quot;</span>
+	}
+	<span class="s0">var </span>buf bytes.Buffer
+	<span class="s0">for </span>k, v := <span class="s0">range </span>data {
+		buf.WriteString(url.QueryEscape(k))
+		buf.WriteByte(<span class="s3">'='</span>)
+		buf.WriteString(url.QueryEscape(v))
+		buf.WriteByte(<span class="s3">'&amp;'</span>)
+	}
+	s := buf.String()
+	<span class="s0">return </span>s[<span class="s6">0 </span>: len(s)-<span class="s6">1</span>]
+}
+
+<span class="s0">func </span>(client *Client) send(ctx context.Context, call *Call) {
+
+	<span class="s4">// Register this call.</span>
+	client.mutex.Lock()
+	<span class="s0">if </span>client.shutdown || client.closing {
+		call.Error = ErrShutdown
+		client.mutex.Unlock()
+		call.done()
+		<span class="s0">return</span>
+	}
+
+	codec := share.Codecs[client.option.SerializeType]
+	<span class="s0">if </span>codec == nil {
+		call.Error = ErrUnsupportedCodec
+		client.mutex.Unlock()
+		call.done()
+		<span class="s0">return</span>
+	}
+
+	<span class="s0">if </span>client.pending == nil {
+		client.pending = make(<span class="s0">map</span>[uint64]*Call)
+	}
+
+	seq := client.seq
+	client.seq++
+	client.pending[seq] = call
+	client.mutex.Unlock()
+
+	<span class="s0">if </span>cseq, ok := ctx.Value(seqKey{}).(*uint64); ok {
+		*cseq = seq
+	}
+
+	<span class="s4">//req := protocol.NewMessage()</span>
+	req := protocol.GetPooledMsg()
+	req.SetMessageType(protocol.Request)
+	req.SetSeq(seq)
+	<span class="s0">if </span>call.Reply == nil {
+		req.SetOneway(true)
+	}
+
+	<span class="s4">// heartbeat</span>
+	<span class="s0">if </span>call.ServicePath == <span class="s3">&quot;&quot; </span>&amp;&amp; call.ServiceMethod == <span class="s3">&quot;&quot; </span>{
+		req.SetHeartbeat(true)
+	} <span class="s0">else </span>{
+		req.SetSerializeType(client.option.SerializeType)
+		<span class="s0">if </span>call.Metadata != nil {
+			req.Metadata = call.Metadata
+		}
+
+		req.ServicePath = call.ServicePath
+		req.ServiceMethod = call.ServiceMethod
+
+		data, err := codec.Encode(call.Args)
+		<span class="s0">if </span>err != nil {
+			call.Error = err
+			call.done()
+			<span class="s0">return</span>
+		}
+		<span class="s0">if </span>len(data) &gt; <span class="s6">1024 </span>&amp;&amp; client.option.CompressType != protocol.None {
+			req.SetCompressType(client.option.CompressType)
+		}
+
+		req.Payload = data
+	}
+
+	data := req.Encode()
+
+	_, err := client.Conn.Write(data)
+	<span class="s0">if </span>err != nil {
+		client.mutex.Lock()
+		call = client.pending[seq]
+		delete(client.pending, seq)
+		client.mutex.Unlock()
+		<span class="s0">if </span>call != nil {
+			call.Error = err
+			call.done()
+		}
+		<span class="s0">return</span>
+	}
+
+	isOneway := req.IsOneway()
+	protocol.FreeMsg(req)
+
+	<span class="s0">if </span>isOneway {
+		client.mutex.Lock()
+		call = client.pending[seq]
+		delete(client.pending, seq)
+		client.mutex.Unlock()
+		<span class="s0">if </span>call != nil {
+			call.done()
+		}
+	}
+
+	<span class="s0">if </span>client.option.WriteTimeout != <span class="s6">0 </span>{
+		client.Conn.SetWriteDeadline(time.Now().Add(client.option.WriteTimeout))
+	}
+
+}
+
+<span class="s0">func </span>(client *Client) input() {
+	<span class="s0">var </span>err error
+	<span class="s0">var </span>res = protocol.NewMessage()
+
+	<span class="s0">for </span>err == nil {
+		<span class="s0">if </span>client.option.ReadTimeout != <span class="s6">0 </span>{
+			client.Conn.SetReadDeadline(time.Now().Add(client.option.ReadTimeout))
+		}
+
+		err = res.Decode(client.r)
+		<span class="s4">//res, err = protocol.Read(client.r)</span>
+
+		<span class="s0">if </span>err != nil {
+			<span class="s0">break</span>
+		}
+		seq := res.Seq()
+		<span class="s0">var </span>call *Call
+		isServerMessage := (res.MessageType() == protocol.Request &amp;&amp; !res.IsHeartbeat() &amp;&amp; res.IsOneway())
+		<span class="s0">if </span>!isServerMessage {
+			client.mutex.Lock()
+			call = client.pending[seq]
+			delete(client.pending, seq)
+			client.mutex.Unlock()
+		}
+
+		<span class="s0">switch </span>{
+		<span class="s0">case </span>call == nil:
+			<span class="s0">if </span>isServerMessage {
+				<span class="s0">if </span>client.ServerMessageChan != nil {
+					<span class="s0">go </span>client.handleServerRequest(res)
+					res = protocol.NewMessage()
+				}
+				<span class="s0">continue</span>
+			}
+		<span class="s0">case </span>res.MessageStatusType() == protocol.Error:
+			<span class="s4">// We've got an error response. Give this to the request</span>
+			<span class="s0">if </span>len(res.Metadata) &gt; <span class="s6">0 </span>{
+				meta := make(<span class="s0">map</span>[string]string, len(res.Metadata))
+				<span class="s0">for </span>k, v := <span class="s0">range </span>res.Metadata {
+					meta[k] = v
+				}
+				call.ResMetadata = meta
+				call.Error = ServiceError(meta[protocol.ServiceError])
+			}
+
+			<span class="s0">if </span>call.Raw {
+				call.Metadata, call.Reply, _ = convertRes2Raw(res)
+				call.Metadata[XErrorMessage] = call.Error.Error()
+			}
+			call.done()
+		<span class="s0">default</span>:
+			<span class="s0">if </span>call.Raw {
+				call.Metadata, call.Reply, _ = convertRes2Raw(res)
+			} <span class="s0">else </span>{
+				data := res.Payload
+				<span class="s0">if </span>len(data) &gt; <span class="s6">0 </span>{
+					codec := share.Codecs[res.SerializeType()]
+					<span class="s0">if </span>codec == nil {
+						call.Error = ServiceError(ErrUnsupportedCodec.Error())
+					} <span class="s0">else </span>{
+						err = codec.Decode(data, call.Reply)
+						<span class="s0">if </span>err != nil {
+							call.Error = ServiceError(err.Error())
+						}
+					}
+				}
+				<span class="s0">if </span>len(res.Metadata) &gt; <span class="s6">0 </span>{
+					meta := make(<span class="s0">map</span>[string]string, len(res.Metadata))
+					<span class="s0">for </span>k, v := <span class="s0">range </span>res.Metadata {
+						meta[k] = v
+					}
+					call.ResMetadata = res.Metadata
+				}
+
+			}
+
+			call.done()
+		}
+
+		res.Reset()
+	}
+	<span class="s4">// Terminate pending calls.</span>
+
+	<span class="s0">if </span>client.ServerMessageChan != nil {
+		req := protocol.NewMessage()
+		req.SetMessageType(protocol.Request)
+		req.SetMessageStatusType(protocol.Error)
+		<span class="s0">if </span>req.Metadata == nil {
+			req.Metadata = make(<span class="s0">map</span>[string]string)
+			<span class="s0">if </span>err != nil {
+				req.Metadata[protocol.ServiceError] = err.Error()
+			}
+		}
+		req.Metadata[<span class="s3">&quot;server&quot;</span>] = client.Conn.RemoteAddr().String()
+		<span class="s0">go </span>client.handleServerRequest(req)
+	}
+
+	client.mutex.Lock()
+	<span class="s0">if </span>!client.pluginClosed {
+		<span class="s0">if </span>client.Plugins != nil {
+			client.Plugins.DoClientConnectionClose(client.Conn)
+		}
+		client.pluginClosed = true
+		client.Conn.Close()
+	}
+	client.shutdown = true
+	closing := client.closing
+	<span class="s0">if </span>err == io.EOF {
+		<span class="s0">if </span>closing {
+			err = ErrShutdown
+		} <span class="s0">else </span>{
+			err = io.ErrUnexpectedEOF
+		}
+	}
+	<span class="s0">for </span>_, call := <span class="s0">range </span>client.pending {
+		call.Error = err
+		call.done()
+	}
+
+	client.mutex.Unlock()
+
+	<span class="s0">if </span>err != nil &amp;&amp; err != io.EOF &amp;&amp; !closing {
+		log.Error(<span class="s3">&quot;rpcx: client protocol error:&quot;</span>, err)
+	}
+}
+
+<span class="s0">func </span>(client *Client) handleServerRequest(msg *protocol.Message) {
+	<span class="s0">defer func</span>() {
+		<span class="s0">if </span>r := recover(); r != nil {
+			log.Errorf(<span class="s3">&quot;ServerMessageChan may be closed so client remove it. Please add it again if you want to handle server requests. error is %v&quot;</span>, r)
+			client.ServerMessageChan = nil
+		}
+	}()
+
+	t := time.NewTimer(<span class="s6">5 </span>* time.Second)
+	<span class="s0">select </span>{
+	<span class="s0">case </span>client.ServerMessageChan &lt;- msg:
+	<span class="s0">case </span>&lt;-t.C:
+		log.Warnf(<span class="s3">&quot;ServerMessageChan may be full so the server request %d has been dropped&quot;</span>, msg.Seq())
+	}
+	t.Stop()
+}
+
+<span class="s0">func </span>(client *Client) heartbeat() {
+	t := time.NewTicker(client.option.HeartbeatInterval)
+
+	<span class="s0">for range </span>t.C {
+		<span class="s0">if </span>client.shutdown || client.closing {
+			<span class="s0">return</span>
+		}
+
+		err := client.Call(context.Background(), <span class="s3">&quot;&quot;</span>, <span class="s3">&quot;&quot;</span>, nil, nil)
+		<span class="s0">if </span>err != nil {
+			log.Warnf(<span class="s3">&quot;failed to heartbeat to %s&quot;</span>, client.Conn.RemoteAddr().String())
+		}
+	}
+}
+
+<span class="s4">// Close calls the underlying connection's Close method. If the connection is already</span>
+// shutting down, ErrShutdown is returned.
+<span class="s0">func </span>(client *Client) Close() error {
+	client.mutex.Lock()
+
+	<span class="s0">for </span>seq, call := <span class="s0">range </span>client.pending {
+		delete(client.pending, seq)
+		<span class="s0">if </span>call != nil {
+			call.Error = ErrShutdown
+			call.done()
+		}
+	}
+
+	<span class="s0">var </span>err error
+	<span class="s0">if </span>!client.pluginClosed {
+		<span class="s0">if </span>client.Plugins != nil {
+			client.Plugins.DoClientConnectionClose(client.Conn)
+		}
+
+		client.pluginClosed = true
+		err = client.Conn.Close()
+	}
+
+	<span class="s0">if </span>client.closing || client.shutdown {
+		client.mutex.Unlock()
+		<span class="s0">return </span>ErrShutdown
+	}
+
+	client.closing = true
+	client.mutex.Unlock()
+	<span class="s0">return </span>err
+}
+</pre>
+</body>
+</html>

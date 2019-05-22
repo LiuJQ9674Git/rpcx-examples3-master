@@ -19,16 +19,17 @@ func main(){
 	//命令行参数,启动如./xxxx -port 10001
 	port := flag.String("port", "10001", "port")
 	flag.Parse()
-	//新建服务
+	//1.新建服务
 	server := server.NewServer()
-	//注册中心为ZK
+	//注册中心为ZK,把服务写入注册中心
 	plugin := &serverplugin.ZooKeeperRegisterPlugin{
-		ServiceAddress:   "tcp@localhost:"+*port,      //本机地址
+		ServiceAddress:   "tcp@localhost:"+*port,      //服务地址
 		ZooKeeperServers: []string{"localhost:2181"},  //zookeeper地址
-		BasePath:         "/rpcx_test",
+		BasePath:         "/rpcx_test",//访问路径
 		Metrics:          metrics.NewRegistry(),//NewRegistry
 		UpdateInterval:   time.Minute,
 	}
+	//2.zk start
 	if err := plugin.Start();err != nil {
 		server.Close()
 		os.Exit(1)
@@ -36,10 +37,12 @@ func main(){
 		server.Plugins.Add(plugin)
 	}
 
-	//注册服务
+	//3. 注册服务
 	server.RegisterName("Hello", new(defines.Hello), "")
-	//启动服务TCP
+	//4. 启动服务TCP
 	go server.Serve("tcp", "0.0.0.0:"+*port)
+
+	//5
 	StartSignal(server,plugin)
 	//
 }

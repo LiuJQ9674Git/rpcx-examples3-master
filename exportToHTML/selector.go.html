@@ -1,0 +1,306 @@
+<html>
+<head>
+<title>selector.go</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #000080; font-weight: bold;}
+.s1 { color: #000000;}
+.s2 { color: #000000;}
+.s3 { color: #008000; font-weight: bold;}
+.s4 { color: #808080; font-style: italic;}
+.s5 { color: #000000;}
+.s6 { color: #0000ff;}
+</style>
+</head>
+<body bgcolor="#ffffff">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#c0c0c0" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+selector.go</font>
+</center></td></tr></table>
+<pre><span class="s0">package </span>client
+
+<span class="s0">import </span>(
+	<span class="s3">&quot;context&quot;</span>
+	&quot;math&quot;
+	&quot;math/rand&quot;
+	&quot;net/url&quot;
+	&quot;sort&quot;
+	&quot;strconv&quot;
+	&quot;time&quot;
+
+	&quot;github.com/edwingeng/doublejump&quot;
+
+	&quot;github.com/valyala/fastrand&quot;
+)
+
+<span class="s4">// Selector defines selector that selects one service from candidates.</span>
+<span class="s0">type </span>Selector <span class="s0">interface </span>{
+	Select(ctx context.Context, servicePath, serviceMethod string, args <span class="s0">interface</span>{}) string
+	UpdateServer(servers <span class="s0">map</span>[string]string)
+}
+
+<span class="s0">func </span>newSelector(selectMode SelectMode, servers <span class="s0">map</span>[string]string) Selector {
+	<span class="s0">switch </span>selectMode {
+	<span class="s0">case </span>RandomSelect:
+		<span class="s0">return </span>newRandomSelector(servers)
+	<span class="s0">case </span>RoundRobin:
+		<span class="s0">return </span>newRoundRobinSelector(servers)
+	<span class="s0">case </span>WeightedRoundRobin:
+		<span class="s0">return </span>newWeightedRoundRobinSelector(servers)
+	<span class="s0">case </span>WeightedICMP:
+		<span class="s0">return </span>newWeightedICMPSelector(servers)
+	<span class="s0">case </span>ConsistentHash:
+		<span class="s0">return </span>newConsistentHashSelector(servers)
+	<span class="s0">case </span>SelectByUser:
+		<span class="s0">return </span>nil
+	<span class="s0">default</span>:
+		<span class="s0">return </span>newRandomSelector(servers)
+	}
+}
+
+<span class="s4">// randomSelector selects randomly.</span>
+<span class="s0">type </span>randomSelector <span class="s0">struct </span>{
+	servers []string
+}
+
+<span class="s0">func </span>newRandomSelector(servers <span class="s0">map</span>[string]string) Selector {
+	<span class="s0">var </span>ss = make([]string, <span class="s6">0</span>, len(servers))
+	<span class="s0">for </span>k := <span class="s0">range </span>servers {
+		ss = append(ss, k)<span class="s4">//切片</span>
+	}
+
+	<span class="s0">return </span>&amp;randomSelector{servers: ss}
+}
+
+<span class="s0">func </span>(s randomSelector) Select(ctx context.Context, servicePath, serviceMethod string, args <span class="s0">interface</span>{}) string {
+	ss := s.servers
+	<span class="s0">if </span>len(ss) == <span class="s6">0 </span>{
+		<span class="s0">return </span><span class="s3">&quot;&quot;</span>
+	}
+	i := fastrand.Uint32n(uint32(len(ss)))
+	<span class="s0">return </span>ss[i]
+}
+
+<span class="s0">func </span>(s *randomSelector) UpdateServer(servers <span class="s0">map</span>[string]string) {
+	<span class="s0">var </span>ss = make([]string, <span class="s6">0</span>, len(servers))
+	<span class="s0">for </span>k := <span class="s0">range </span>servers {
+		ss = append(ss, k)
+	}
+
+	s.servers = ss
+}
+
+<span class="s4">// roundRobinSelector selects servers with roundrobin.</span>
+<span class="s0">type </span>roundRobinSelector <span class="s0">struct </span>{
+	servers []string
+	i       int
+}
+
+<span class="s0">func </span>newRoundRobinSelector(servers <span class="s0">map</span>[string]string) Selector {
+	<span class="s0">var </span>ss = make([]string, <span class="s6">0</span>, len(servers))
+	<span class="s0">for </span>k := <span class="s0">range </span>servers {
+		ss = append(ss, k)
+	}
+
+	<span class="s0">return </span>&amp;roundRobinSelector{servers: ss}
+}
+
+<span class="s0">func </span>(s *roundRobinSelector) Select(ctx context.Context, servicePath, serviceMethod string, args <span class="s0">interface</span>{}) string {
+	<span class="s0">var </span>ss = s.servers
+	<span class="s0">if </span>len(ss) == <span class="s6">0 </span>{
+		<span class="s0">return </span><span class="s3">&quot;&quot;</span>
+	}
+	i := s.i
+	i = i % len(ss)
+	s.i = i + <span class="s6">1</span>
+
+	<span class="s0">return </span>ss[i]
+}
+
+<span class="s0">func </span>(s *roundRobinSelector) UpdateServer(servers <span class="s0">map</span>[string]string) {
+	<span class="s0">var </span>ss = make([]string, <span class="s6">0</span>, len(servers))
+	<span class="s0">for </span>k := <span class="s0">range </span>servers {
+		ss = append(ss, k)
+	}
+
+	s.servers = ss
+}
+
+<span class="s4">// weightedRoundRobinSelector selects servers with weighted.</span>
+<span class="s0">type </span>weightedRoundRobinSelector <span class="s0">struct </span>{
+	servers []*Weighted
+}
+
+<span class="s0">func </span>newWeightedRoundRobinSelector(servers <span class="s0">map</span>[string]string) Selector {
+	ss := createWeighted(servers)
+	<span class="s0">return </span>&amp;weightedRoundRobinSelector{servers: ss}
+}
+
+<span class="s0">func </span>(s *weightedRoundRobinSelector) Select(ctx context.Context, servicePath, serviceMethod string, args <span class="s0">interface</span>{}) string {
+	ss := s.servers
+	<span class="s0">if </span>len(ss) == <span class="s6">0 </span>{
+		<span class="s0">return </span><span class="s3">&quot;&quot;</span>
+	}
+	w := nextWeighted(ss)
+	<span class="s0">if </span>w == nil {
+		<span class="s0">return </span><span class="s3">&quot;&quot;</span>
+	}
+	<span class="s0">return </span>w.Server
+}
+
+<span class="s0">func </span>(s *weightedRoundRobinSelector) UpdateServer(servers <span class="s0">map</span>[string]string) {
+	ss := createWeighted(servers)
+	s.servers = ss
+}
+
+<span class="s0">func </span>createWeighted(servers <span class="s0">map</span>[string]string) []*Weighted {
+	<span class="s0">var </span>ss = make([]*Weighted, <span class="s6">0</span>, len(servers))
+	<span class="s0">for </span>k, metadata := <span class="s0">range </span>servers {
+		w := &amp;Weighted{Server: k, Weight: <span class="s6">1</span>, EffectiveWeight: <span class="s6">1</span>}
+
+		<span class="s0">if </span>v, err := url.ParseQuery(metadata); err == nil {
+			ww := v.Get(<span class="s3">&quot;weight&quot;</span>)
+			<span class="s0">if </span>ww != <span class="s3">&quot;&quot; </span>{
+				<span class="s0">if </span>weight, err := strconv.Atoi(ww); err == nil {
+					w.Weight = weight
+					w.EffectiveWeight = weight
+				}
+			}
+		}
+
+		ss = append(ss, w)
+	}
+
+	<span class="s0">return </span>ss
+}
+
+<span class="s0">type </span>geoServer <span class="s0">struct </span>{
+	Server    string
+	Latitude  float64
+	Longitude float64
+}
+
+<span class="s4">// geoSelector selects servers based on location.</span>
+<span class="s0">type </span>geoSelector <span class="s0">struct </span>{
+	servers   []*geoServer
+	Latitude  float64
+	Longitude float64
+	r         *rand.Rand
+}
+
+<span class="s0">func </span>newGeoSelector(servers <span class="s0">map</span>[string]string, latitude, longitude float64) Selector {
+	ss := createGeoServer(servers)
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	<span class="s0">return </span>&amp;geoSelector{servers: ss, Latitude: latitude, Longitude: longitude, r: r}
+}
+
+<span class="s0">func </span>(s geoSelector) Select(ctx context.Context, servicePath, serviceMethod string, args <span class="s0">interface</span>{}) string {
+	<span class="s0">if </span>len(s.servers) == <span class="s6">0 </span>{
+		<span class="s0">return </span><span class="s3">&quot;&quot;</span>
+	}
+
+	<span class="s0">var </span>server []string
+	min := math.MaxFloat64
+	<span class="s0">for </span>_, gs := <span class="s0">range </span>s.servers {
+		d := getDistanceFrom(s.Latitude, s.Longitude, gs.Latitude, gs.Longitude)
+		<span class="s0">if </span>d &lt; min {
+			server = []string{gs.Server}
+			min = d
+		} <span class="s0">else if </span>d == min {
+			server = append(server, gs.Server)
+		}
+	}
+
+	<span class="s0">if </span>len(server) == <span class="s6">1 </span>{
+		<span class="s0">return </span>server[<span class="s6">0</span>]
+	}
+
+	<span class="s0">return </span>server[s.r.Intn(len(server))]
+}
+
+<span class="s0">func </span>(s *geoSelector) UpdateServer(servers <span class="s0">map</span>[string]string) {
+	ss := createGeoServer(servers)
+	s.servers = ss
+}
+
+<span class="s0">func </span>createGeoServer(servers <span class="s0">map</span>[string]string) []*geoServer {
+	<span class="s0">var </span>geoServers = make([]*geoServer, <span class="s6">0</span>, len(servers))
+
+	<span class="s0">for </span>s, metadata := <span class="s0">range </span>servers {
+		<span class="s0">if </span>v, err := url.ParseQuery(metadata); err == nil {
+			latStr := v.Get(<span class="s3">&quot;latitude&quot;</span>)
+			lonStr := v.Get(<span class="s3">&quot;longitude&quot;</span>)
+
+			<span class="s0">if </span>latStr == <span class="s3">&quot;&quot; </span>|| lonStr == <span class="s3">&quot;&quot; </span>{
+				<span class="s0">continue</span>
+			}
+
+			lat, err := strconv.ParseFloat(latStr, <span class="s6">64</span>)
+			<span class="s0">if </span>err != nil {
+				<span class="s0">continue</span>
+			}
+			lon, err := strconv.ParseFloat(lonStr, <span class="s6">64</span>)
+			<span class="s0">if </span>err != nil {
+				<span class="s0">continue</span>
+			}
+
+			geoServers = append(geoServers, &amp;geoServer{Server: s, Latitude: lat, Longitude: lon})
+
+		}
+	}
+
+	<span class="s0">return </span>geoServers
+}
+
+<span class="s4">// consistentHashSelector selects based on JumpConsistentHash.</span>
+<span class="s0">type </span>consistentHashSelector <span class="s0">struct </span>{
+	h       *doublejump.Hash
+	servers []string
+}
+
+<span class="s0">func </span>newConsistentHashSelector(servers <span class="s0">map</span>[string]string) Selector {
+	<span class="s0">var </span>ss = make([]string, <span class="s6">0</span>, len(servers))
+	<span class="s0">for </span>k := <span class="s0">range </span>servers {
+		ss = append(ss, k)
+	}
+
+	sort.Slice(ss, <span class="s0">func</span>(i, j int) bool { <span class="s0">return </span>ss[i] &lt; ss[j] })
+	<span class="s0">return </span>&amp;consistentHashSelector{servers: ss, h: doublejump.NewHash()}
+}
+
+<span class="s0">func </span>(s consistentHashSelector) Select(ctx context.Context, servicePath, serviceMethod string, args <span class="s0">interface</span>{}) string {
+	ss := s.servers
+	<span class="s0">if </span>len(ss) == <span class="s6">0 </span>{
+		<span class="s0">return </span><span class="s3">&quot;&quot;</span>
+	}
+
+	key := genKey(servicePath, serviceMethod, args)
+	<span class="s0">return </span>s.h.Get(key).(string)
+}
+
+<span class="s0">func </span>(s *consistentHashSelector) UpdateServer(servers <span class="s0">map</span>[string]string) {
+	<span class="s0">var </span>ss = make([]string, <span class="s6">0</span>, len(servers))
+	<span class="s0">for </span>k := <span class="s0">range </span>servers {
+		s.h.Add(k)
+		ss = append(ss, k)
+	}
+
+	sort.Slice(ss, <span class="s0">func</span>(i, j int) bool { <span class="s0">return </span>ss[i] &lt; ss[j] })
+
+	<span class="s0">for </span>_, k := <span class="s0">range </span>s.servers {
+		<span class="s0">if </span>servers[k] == <span class="s3">&quot;&quot; </span>{ <span class="s4">//remove</span>
+			s.h.Remove(k)
+		}
+	}
+	s.servers = ss
+
+}
+
+<span class="s4">// weightedICMPSelector selects servers with ping result.</span>
+<span class="s0">type </span>weightedICMPSelector <span class="s0">struct </span>{
+	servers []*Weighted
+}
+</pre>
+</body>
+</html>
